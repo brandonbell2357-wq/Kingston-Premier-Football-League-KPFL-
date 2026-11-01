@@ -36,6 +36,7 @@ This repository holds the group's six-week object-oriented programming project.
 
 ## Documents
 
+- `docs/week1/KPFL_Week_1_Requirements_and_Design.pdf`: the Week 1 requirements and design document (requirements, actors and rules, use cases, design decisions, persistence, test plan, UML diagram and console menu).
 - `docs/kpfl-uml-week1.drawio`: UML class diagram (open it at app.diagrams.net).
 - `docs/contribution-log.md`: weekly record of what each member did.
 
