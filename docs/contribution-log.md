@@ -28,7 +28,7 @@ Where this file lives: `docs/contribution-log.md`
 
 | Member | Role | What I did | Hours | Evidence (commits, pull requests, files) |
 | --- | --- | --- | --- | --- |
-| Brandon Bell | TBD (roles not yet assigned) | | | |
+| Brandon Bell | TBD (roles not yet assigned) | Set up the repository folders and reviewed the requirements document| | |
 | Theo-Jean Forester | TBD (roles not yet assigned) | | | |
 | Landan Williams | TBD (roles not yet assigned) | | | |
 | Lamar | TBD (roles not yet assigned) | | | |
