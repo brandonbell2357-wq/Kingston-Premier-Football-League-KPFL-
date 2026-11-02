@@ -35,9 +35,7 @@ public abstract class Person {
         this.gender = p.gender;
     }
 
-    ~Person() {
-        
-    }
+    
 
 
 
