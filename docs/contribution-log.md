@@ -68,7 +68,8 @@ Where this file lives: `docs/contribution-log.md`
 
 | Member | What I did | Hours | Evidence |
 | --- | --- | --- | --- |
-| Brandon Bell | | | |
+| Brandon Bell |Created person class and its derived classes.
+Added some exceptions| 4| |
 | Theo-Jean Forester | | | |
 | Landan Williams | | | |
 | Lamar | | | |
