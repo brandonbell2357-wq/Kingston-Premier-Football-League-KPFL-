@@ -13,7 +13,7 @@ public class Spectator extends Person {
 
     /** Copy constructor: copies every field of another spectator. */
     public Spectator(Spectator other) {
-        super(other);
+        super(other);//op
     }
 
     @Override
