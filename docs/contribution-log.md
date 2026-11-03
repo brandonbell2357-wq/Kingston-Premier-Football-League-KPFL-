@@ -31,7 +31,7 @@ Where this file lives: `docs/contribution-log.md`
 | Brandon Bell | TBD (roles not yet assigned) | Set up the repository folders, reviewed the requirements document, Created the UML class diagram and contributed to finding requirements| 3.5| [Week 1 requirements PDF](week1/KPFL_Week_1_Requirements_and_Design.pdf) |
 | Theo-Jean Forester | TBD (roles not yet assigned) | | | |
 | Landan Williams | TBD (roles not yet assigned) | | | |
-| Lamar | TBD (roles not yet assigned) | | | |
+| Lamar Martin| TBD (roles not yet assigned) |Assessed the Requirement document and reviewing | 2.7 |[Week 1 requirements PDF](week1/KPFL_Week_1_Requirements_and_Design.pdf) |
 
 ### Decisions made
 
@@ -50,7 +50,7 @@ Where this file lives: `docs/contribution-log.md`
 | Brandon Bell | |
 | Theo-Jean Forester | |
 | Landan Williams | |
-| Lamar | |
+| Lamar Martin| |
 
 ### AI assistance and sources
 
