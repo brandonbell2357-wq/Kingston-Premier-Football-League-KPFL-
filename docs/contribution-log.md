@@ -1,6 +1,6 @@
 # KPFL Project: Contribution Log
 
-Group members: Brandon Bell, Theo-Jean Forester, Landan Williams, Lamar
+Group members: Brandon Bell, Theo-Jean Forester, Landan Williams, Lamar Martin
 Repository: https://github.com/brandonbell2357-wq/Kingston-Premier-Football-League-KPFL-
 Where this file lives: `docs/contribution-log.md`
 
@@ -50,7 +50,7 @@ Where this file lives: `docs/contribution-log.md`
 | Brandon Bell | |
 | Theo-Jean Forester | |
 | Landan Williams | |
-| Lamar Martin| |
+| Lamar Martin| Implementation of staduim, footballteam entity in java|
 
 ### AI assistance and sources
 
@@ -61,7 +61,7 @@ Where this file lives: `docs/contribution-log.md`
 
 ## Week 2: Core implementation
 
-**Dates worked:** TBD
+**Dates worked:** Oct 29 - Current
 **Checkpoint deliverable:** Person hierarchy, teams, personnel, stadiums, first unit tests, console prototype
 
 ### Per-member entries
@@ -71,14 +71,16 @@ Where this file lives: `docs/contribution-log.md`
 | Brandon Bell |Created person class and its derived classes. Created a few exceptions| 4| |
 | Theo-Jean Forester | | | |
 | Landan Williams | | | |
-| Lamar Martin | Implemented Stadium and FootballTeam domain entity classes in src/model/ with full field encapsulation, input validation checks and initial unit tests in test/StadiumTest.java.|4.1|[\`src/model/Stadium.java\`](../src/model/Stadium.java)|
+| Lamar Martin | Implemented Stadium and FootballTeam domain entity classes with full field encapsulation, input validation checks and initial unit tests in test/StadiumTest.java.|4.1|[\`src/model/Stadium.java\`](../src/model/Stadium.java)|
 
 ### Decisions made
-
+- Encapsulated \`FootballTeam\` status initialization to default to 'Pending' upon creation.
+- Defined \`Stadium\` capacity and ticket price validation in model constructors to prevent invalid values before service execution.
 - TBD
 
 ### Problems and how they were solved
-
+-Problem: Preventing empty or invalid string inputs for registration numbers and stadium names.
+-Solution: Added trim and null/blank checks in class constructors throwing \`IllegalArgumentException\`.
 - TBD
 
 ### Plan for next week
@@ -88,10 +90,10 @@ Where this file lives: `docs/contribution-log.md`
 | Brandon Bell | |
 | Theo-Jean Forester | |
 | Landan Williams | |
-| Lamar | |
+| Lamar Martin| Implement custom exception package and Collaboration on fixture and standing logic|
 
 ### AI assistance and sources
-
+* Used Gemini Notebook for drafting input validation logic and unit test generation for \`FootballTeam.java\`, \`Stadium.java\`, and \`StadiumTest.java\`. Code was reviewed and verified and committed by Lamar Martin.
 - TBD
 
 ---
