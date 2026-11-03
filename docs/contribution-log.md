@@ -31,7 +31,7 @@ Where this file lives: `docs/contribution-log.md`
 | Brandon Bell | TBD (roles not yet assigned) | Set up the repository folders, reviewed the requirements document, Created the UML class diagram and contributed to finding requirements| 3.5| [Week 1 requirements PDF](week1/KPFL_Week_1_Requirements_and_Design.pdf) |
 | Theo-Jean Forester | TBD (roles not yet assigned) | | | |
 | Landan Williams | TBD (roles not yet assigned) | | | |
-| Lamar Martin| Fixtures & Stadiums Lead |Audited the 28-case initial test plan matrix across normal, boundary and invalid scenarios. Verified all 13 OOP relationship justifications (inheritance, aggregation, composition, association) against domain model requirements. | 3 | [Week 1 requirements PDF] (week1/KPFL_Week_1_Requirements_and_Design.pdf) |
+| Lamar Martin| Fixtures & Stadiums Lead |Audited the 28-case initial test plan matrix across normal, boundary and invalid scenarios. Verified all 13 OOP relationship justifications (inheritance, aggregation, composition, association) against domain model requirements. | 3 |  [Week 1 requirements PDF](week1/KPFL_Week_1_Requirements_and_Design.pdf) |
 
 ### Decisions made
 
@@ -71,7 +71,7 @@ Where this file lives: `docs/contribution-log.md`
 | Brandon Bell |Created person class and its derived classes. Created a few exceptions| 4| |
 | Theo-Jean Forester | | | |
 | Landan Williams | | | |
-| Lamar Martin | Implemented Stadium and FootballTeam domain entity classes in src/model/ with full field encapsulation, input validation checks and initial unit tests in test/StadiumTest.java.|4.1| src/model/FootballTeam.java, src/model/Stadium.java, test/StadiumTest.java|
+| Lamar Martin | Implemented Stadium and FootballTeam domain entity classes in src/model/ with full field encapsulation, input validation checks and initial unit tests in test/StadiumTest.java.|4.1|[\`src/model/Stadium.java\`](../src/model/Stadium.java)|
 
 ### Decisions made
 
