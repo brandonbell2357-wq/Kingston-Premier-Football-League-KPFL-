@@ -14,10 +14,11 @@ public class MatchOfficial extends Person {
         this.available = true;
     }
 
-    public MatchOfficial(String id, String name, int age, String gender, String officialRole, String rank) {
+    public MatchOfficial(String id, String name, int age, String gender, String officialRole,
+                         String rank) throws InvalidDataException {
         super(id, name, age, gender);
-        this.officialRole = officialRole;
-        this.rank = rank;
+        setOfficialRole(officialRole);
+        setRank(rank);
         this.available = true;
     }
 
@@ -44,16 +45,22 @@ public class MatchOfficial extends Person {
         return officialRole;
     }
 
-    public void setOfficialRole(String officialRole) {
-        this.officialRole = officialRole;
+    public void setOfficialRole(String officialRole) throws InvalidDataException {
+        if (officialRole == null || officialRole.trim().isEmpty()) {
+            throw new InvalidDataException("Official role cannot be blank.");
+        }
+        this.officialRole = officialRole.trim();
     }
 
     public String getRank() {
         return rank;
     }
 
-    public void setRank(String rank) {
-        this.rank = rank;
+    public void setRank(String rank) throws InvalidDataException {
+        if (rank == null || rank.trim().isEmpty()) {
+            throw new InvalidDataException("Rank cannot be blank.");
+        }
+        this.rank = rank.trim();
     }
 
     public boolean isAvailable() {
@@ -64,5 +71,3 @@ public class MatchOfficial extends Person {
         this.available = available;
     }
 }
-
-//Weo99
