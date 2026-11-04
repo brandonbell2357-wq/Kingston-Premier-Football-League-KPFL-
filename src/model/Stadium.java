@@ -13,23 +13,32 @@ public class Stadium {
 
     /** Default constructor: empty text, capacity 0 and a ticket price of zero. */
     public Stadium() {
-        this("", "", "", 0, "", BigDecimal.ZERO);
+        this.stadiumId = "";
+        this.name = "";
+        this.location = "";
+        this.seatingCapacity = 0;
+        this.fieldCondition = "";
+        this.ticketPrice = BigDecimal.ZERO;
     }
 
     public Stadium(String stadiumId, String name, String location, int seatingCapacity,
-                   String fieldCondition, BigDecimal ticketPrice) {
-        this.stadiumId = stadiumId;
-        this.name = name;
-        this.location = location;
-        this.seatingCapacity = seatingCapacity;
-        this.fieldCondition = fieldCondition;
-        this.ticketPrice = ticketPrice;
+                   String fieldCondition, BigDecimal ticketPrice) throws InvalidDataException {
+        setStadiumId(stadiumId);
+        setName(name);
+        setLocation(location);
+        setSeatingCapacity(seatingCapacity);
+        setFieldCondition(fieldCondition);
+        setTicketPrice(ticketPrice);
     }
 
     /** Copy constructor: copies every field of another stadium. */
     public Stadium(Stadium other) {
-        this(other.stadiumId, other.name, other.location, other.seatingCapacity,
-                other.fieldCondition, other.ticketPrice);
+        this.stadiumId = other.stadiumId;
+        this.name = other.name;
+        this.location = other.location;
+        this.seatingCapacity = other.seatingCapacity;
+        this.fieldCondition = other.fieldCondition;
+        this.ticketPrice = other.ticketPrice;
     }
 
     /**
@@ -46,31 +55,43 @@ public class Stadium {
         return stadiumId;
     }
 
-    public void setStadiumId(String stadiumId) {
-        this.stadiumId = stadiumId;
+    public void setStadiumId(String stadiumId) throws InvalidDataException {
+        if (stadiumId == null || stadiumId.trim().isEmpty()) {
+            throw new InvalidDataException("Stadium ID cannot be blank.");
+        }
+        this.stadiumId = stadiumId.trim();
     }
 
     public String getName() {
         return name;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setName(String name) throws InvalidDataException {
+        if (name == null || name.trim().isEmpty()) {
+            throw new InvalidDataException("Stadium name cannot be blank.");
+        }
+        this.name = name.trim();
     }
 
     public String getLocation() {
         return location;
     }
 
-    public void setLocation(String location) {
-        this.location = location;
+    public void setLocation(String location) throws InvalidDataException {
+        if (location == null || location.trim().isEmpty()) {
+            throw new InvalidDataException("Location cannot be blank.");
+        }
+        this.location = location.trim();
     }
 
     public int getSeatingCapacity() {
         return seatingCapacity;
     }
 
-    public void setSeatingCapacity(int seatingCapacity) {
+    public void setSeatingCapacity(int seatingCapacity) throws InvalidDataException {
+        if (seatingCapacity <= 0) {
+            throw new InvalidDataException("Seating capacity must be greater than 0 (value given: " + seatingCapacity + ").");
+        }
         this.seatingCapacity = seatingCapacity;
     }
 
@@ -78,20 +99,27 @@ public class Stadium {
         return fieldCondition;
     }
 
-    public void setFieldCondition(String fieldCondition) {
-        this.fieldCondition = fieldCondition;
+    public void setFieldCondition(String fieldCondition) throws InvalidDataException {
+        if (fieldCondition == null || fieldCondition.trim().isEmpty()) {
+            throw new InvalidDataException("Field condition cannot be blank.");
+        }
+        this.fieldCondition = fieldCondition.trim();
     }
 
     public BigDecimal getTicketPrice() {
         return ticketPrice;
     }
 
-    public void setTicketPrice(BigDecimal ticketPrice) {
+    public void setTicketPrice(BigDecimal ticketPrice) throws InvalidDataException {
+        if (ticketPrice == null || ticketPrice.compareTo(BigDecimal.ZERO) < 0) {
+            throw new InvalidDataException("Ticket price cannot be null or negative.");
+        }
         this.ticketPrice = ticketPrice;
     }
 
     @Override
     public String toString() {
-        return stadiumId + " " + name + " (" + location + ", capacity " + seatingCapacity + ", " + fieldCondition + ")";
+        return stadiumId + " " + name + " (" + location + ", capacity " + seatingCapacity + ", "
+                + fieldCondition + ")";
     }
 }
