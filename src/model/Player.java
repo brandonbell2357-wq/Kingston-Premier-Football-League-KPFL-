@@ -1,9 +1,8 @@
 package model;
 
-
-
 /** A footballer registered with a team. */
 public class Player extends Person {
+
     /**
      * League minimum player age (BR6).
      * PLACEHOLDER VALUE: the project brief mentions a minimum age but never gives it.
@@ -16,24 +15,24 @@ public class Player extends Person {
     private int goals;
     private String playingStatus;
 
-    public Player(){
+    public Player() {
         super();
         this.position = "";
         this.jerseyNumber = 0;
         this.playingStatus = "";
         this.goals = 0;
-
     }
 
+    /**
+     * The minimum-age rule (BR6) is enforced by setAge() below. Person's constructor
+     * calls setAge(), so it applies here automatically.
+     */
     public Player(String id, String name, int age, String gender,
-                  String position, int jerseyNumber, String playingStatus)  {
+                  String position, int jerseyNumber, String playingStatus) throws InvalidDataException {
         super(id, name, age, gender);
-        if (age < MIN_AGE) {
-            //Create Exception to throw
-        }
-        this.position = position;
-        this.jerseyNumber = jerseyNumber;
-        this.playingStatus = playingStatus;
+        setPosition(position);
+        setJerseyNumber(jerseyNumber);
+        setPlayingStatus(playingStatus);
         this.goals = 0;
     }
 
@@ -45,8 +44,6 @@ public class Player extends Person {
         this.goals = player.goals;
     }
 
-
-
     @Override
     public String getRole() {
         return "Player";
@@ -57,8 +54,20 @@ public class Player extends Person {
         return super.describe() + ", " + position + " #" + jerseyNumber + ", " + goals + " goals, " + playingStatus;
     }
 
+    /** Overrides Person.setAge to add the player minimum-age rule (BR6). */
+    @Override
+    public void setAge(int age) throws InvalidDataException {
+        if (age >= 0 && age < MIN_AGE) {
+            throw new UnderageException("A player must be at least " + MIN_AGE + " years old (age given: " + age + ").");
+        }
+        super.setAge(age); // still checks the normal 0 to MAX_AGE range
+    }
+
     /** Adds goals scored. The number cannot be negative (BR5). */
-    public void recordGoals(int newGoals){
+    public void recordGoals(int newGoals) throws InvalidDataException {
+        if (newGoals < 0) {
+            throw new InvalidDataException("Goals cannot be negative (value given: " + newGoals + ").");
+        }
         this.goals += newGoals;
     }
 
@@ -66,15 +75,21 @@ public class Player extends Person {
         return position;
     }
 
-    public void setPosition(String position) {
-        this.position = position;
+    public void setPosition(String position) throws InvalidDataException {
+        if (position == null || position.trim().isEmpty()) {
+            throw new InvalidDataException("Position cannot be blank.");
+        }
+        this.position = position.trim();
     }
 
     public int getJerseyNumber() {
         return jerseyNumber;
     }
 
-    public void setJerseyNumber(int jerseyNumber) {
+    public void setJerseyNumber(int jerseyNumber) throws InvalidDataException {
+        if (jerseyNumber < 1 || jerseyNumber > 99) {
+            throw new InvalidDataException("Jersey number must be between 1 and 99 (value given: " + jerseyNumber + ").");
+        }
         this.jerseyNumber = jerseyNumber;
     }
 
@@ -86,7 +101,10 @@ public class Player extends Person {
         return playingStatus;
     }
 
-    public void setPlayingStatus(String playingStatus) {
-        this.playingStatus = playingStatus;
+    public void setPlayingStatus(String playingStatus) throws InvalidDataException {
+        if (playingStatus == null || playingStatus.trim().isEmpty()) {
+            throw new InvalidDataException("Playing status cannot be blank.");
+        }
+        this.playingStatus = playingStatus.trim();
     }
 }
