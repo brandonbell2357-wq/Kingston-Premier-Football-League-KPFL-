@@ -12,10 +12,11 @@ public class Coach extends Person {
         this.coachingRole = "";
     }
 
-    public Coach(String id, String name, int age, String gender, String qualification, String coachingRole) {
+    public Coach(String id, String name, int age, String gender, String qualification,
+                 String coachingRole) throws InvalidDataException {
         super(id, name, age, gender);
-        this.qualification = qualification;
-        this.coachingRole = coachingRole;
+        setQualification(qualification);
+        setCoachingRole(coachingRole);
     }
 
     /** Copy constructor: copies every field of another coach. */
@@ -39,15 +40,23 @@ public class Coach extends Person {
         return qualification;
     }
 
-    public void setQualification(String qualification) {
-        this.qualification = qualification;
+   public void setQualification(String qualification) throws InvalidDataException {
+        if (qualification == null || qualification.trim().isEmpty()) {
+            throw new InvalidDataException("Qualification cannot be blank.");
+        }
+        this.qualification = qualification.trim();
     }
 
     public String getCoachingRole() {
         return coachingRole;
     }
 
-    public void setCoachingRole(String coachingRole) {
-        this.coachingRole = coachingRole;
+    public void setCoachingRole(String coachingRole) throws InvalidDataException {
+        if (coachingRole == null || coachingRole.trim().isEmpty()) {
+            throw new InvalidDataException("Coaching role cannot be blank.");
+        }
+        this.coachingRole = coachingRole.trim();
     }
+
+    
 }
