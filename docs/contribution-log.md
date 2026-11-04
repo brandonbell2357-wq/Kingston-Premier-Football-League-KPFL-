@@ -70,7 +70,7 @@ Where this file lives: `docs/contribution-log.md`
 | --- | --- | --- | --- |
 | Brandon Bell |Created person class and its derived classes. Created a few exceptions| 4| |
 | Theo-Jean Forester | | | |
-| Landan Williams | | | |
+| Landan Williams | Creation Of custom exception classes and Implementing then on existing classes | | |
 | Lamar Martin | Implemented Stadium and FootballTeam domain entity classes with full field encapsulation, input validation checks and initial unit tests in test/StadiumTest.java.|4.1|[\`src/model/Stadium.java\`](../src/model/Stadium.java)|
 
 ### Decisions made
@@ -89,7 +89,7 @@ Where this file lives: `docs/contribution-log.md`
 | --- | --- |
 | Brandon Bell | |
 | Theo-Jean Forester | |
-| Landan Williams | |
+| Landan Williams |  |
 | Lamar Martin| Implement custom exception package and Collaboration on fixture and standing logic|
 
 ### AI assistance and sources
