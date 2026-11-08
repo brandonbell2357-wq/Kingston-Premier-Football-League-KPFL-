@@ -71,7 +71,7 @@ Where this file lives: `docs/contribution-log.md`
 | Brandon Bell |Created person class and its derived classes. Created a few exceptions| 4| |
 | Theo-Jean Forester | | | |
 | Landan Williams | Creation Of custom exception classes and Implementing then on existing classes | 4| |
-| Lamar Martin | Developed the Stadium and FootballTeam domain entity classes (field encapsulation and input validation) with AI assistance: Gemini drafted the code, and I checked, changed and tested it. The files were uploaded to the repository by Brandon Bell. Following an AI-assisted code review (Claude), made and committed 4 fixes on branch fix/review-issues, and raised issue #9 for the remaining cleanup, assigned to the authors. | 4.1 + (2) | src/model/Stadium.java, src/model/FootballTeam.java (uploaded by Brandon Bell), pull request: (paste link), issue #9 |
+| Lamar Martin | Developed the Stadium and FootballTeam domain entity classes (field encapsulation and input validation) with AI assistance: Gemini drafted the code, and I checked, changed and tested it. The files were uploaded to the repository by Brandon Bell. Following an AI-assisted code review with (Claude), made and committed 4 fixes on branch fix/review-issues and raised issue #9 for the remaining cleanup, assigned to the authors. | 4.1 + (2) | src/model/Stadium.java, src/model/FootballTeam.java (uploaded by Brandon Bell), pull request: (paste link), issue #9 |
 
 ### Decisions made
 - Encapsulated `FootballTeam` status initialization to default to 'Pending' upon creation.
