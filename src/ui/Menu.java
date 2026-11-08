@@ -146,6 +146,11 @@ public class Menu {
     private int readInt(String prompt, int min, int max) {
         while (true) {
             System.out.print(prompt);
+            if (!scanner.hasNextLine()) {
+                System.out.println();
+                return 0;
+            }
+            
             String line = scanner.nextLine().trim();
             try {
                 int value = Integer.parseInt(line);
