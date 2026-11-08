@@ -1,5 +1,7 @@
 package model;
 
+import exception.InvalidDataException;
+
 /** A referee or other official who can be assigned to fixtures. */
 public class MatchOfficial extends Person {
     private String officialRole;

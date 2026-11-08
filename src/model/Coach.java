@@ -1,4 +1,5 @@
 package model;
+import exception.InvalidDataException;
 
 /** A member of a team's coaching staff. */
 public class Coach extends Person {

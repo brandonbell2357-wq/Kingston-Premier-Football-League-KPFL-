@@ -1,5 +1,7 @@
 package model;
 
+import exception.InvalidDataException;
+
 /**
  * Abstract superclass of everyone the league deals with. It holds the personal data
  * shared by players, coaches, officials, the commissioner and spectators.

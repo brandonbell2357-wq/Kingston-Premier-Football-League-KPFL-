@@ -1,5 +1,6 @@
 package model;
 
+import exception.InvalidDataException;
 import java.math.BigDecimal;
 
 /** A stadium where fixtures are played. */

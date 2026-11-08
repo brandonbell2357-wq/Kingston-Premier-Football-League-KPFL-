@@ -1,5 +1,9 @@
 package model;
 
+import exception.DuplicateEntryException;
+import exception.InvalidDataException;
+import exception.NotFoundException;
+import exception.SquadFullException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
