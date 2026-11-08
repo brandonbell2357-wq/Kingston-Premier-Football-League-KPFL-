@@ -10,7 +10,7 @@ public abstract class Person {
     /** Highest age accepted for any person. */
     public static final int MAX_AGE = 120;
 
-    protected final String id;
+    protected String id;
     protected String name;
     protected int age;
     protected String gender;
@@ -54,6 +54,13 @@ public abstract class Person {
 
     public String getName() {
         return name;
+    }
+
+    public void setId(String id) throws InvalidDataException {
+        if (id == null || id.trim().isEmpty()) {
+            throw new InvalidDataException("ID cannot be blank.");
+        }
+        this.id = id.trim();
     }
 
     public void setName(String name) throws InvalidDataException {
