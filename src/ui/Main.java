@@ -1,9 +1,11 @@
 
 package ui;
 
+import exception.InvalidDataException;
 import model.FootballTeam;
 import model.Stadium;
 
+import java.math.BigDecimal;
 import java.util.Scanner;
 
 /**
@@ -23,10 +25,10 @@ public class Main {
 
         // 1. Instantiate and verify Stadium model
         try {
-            Stadium nationalStadium = new Stadium("STD01", "National Stadium", "Kingston", 35000, "Excellent", 1500.00);
+            Stadium nationalStadium = new Stadium("STD01", "National Stadium", "Kingston", 35000, "Excellent", BigDecimal.valueOf(1500.00));
             System.out.println("✓ Stadium created successfully:");
             System.out.println("  " + nationalStadium);
-        } catch (IllegalArgumentException e) {
+        } catch (InvalidDataException e) {
             System.err.println("✗ Stadium creation failed: " + e.getMessage());
         }
 
@@ -35,7 +37,7 @@ public class Main {
             FootballTeam harbourView = new FootballTeam("TM01", "Harbour View FC", "Kingston", 25);
             System.out.println("✓ FootballTeam created successfully:");
             System.out.println("  " + harbourView + "\n");
-        } catch (IllegalArgumentException e) {
+        } catch (InvalidDataException e) {
             System.err.println("✗ Team creation failed: " + e.getMessage());
         }
 

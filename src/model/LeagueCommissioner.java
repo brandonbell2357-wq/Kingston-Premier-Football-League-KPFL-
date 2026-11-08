@@ -1,5 +1,7 @@
 package model;
 
+import exception.InvalidDataException;
+
 /** The person who runs the league and approves or suspends teams. */
 public class LeagueCommissioner extends Person {
 

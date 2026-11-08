@@ -1,4 +1,4 @@
-package model;
+package exception;
 
 /** Thrown when we try to remove or find something that does not exist. */
 public class NotFoundException extends KPFLException {

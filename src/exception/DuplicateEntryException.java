@@ -1,4 +1,4 @@
-package model;
+package exception;
 
 /** Thrown when something that must be unique (an ID, a jersey number) already exists. */
 public class DuplicateEntryException extends KPFLException {

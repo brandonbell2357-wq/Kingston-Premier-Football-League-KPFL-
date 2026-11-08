@@ -1,5 +1,7 @@
 package model;
 
+import exception.InvalidDataException;
+
 /** A person who attends matches and buys tickets and shop products. */
 public class Spectator extends Person {
 
