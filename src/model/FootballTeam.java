@@ -84,10 +84,9 @@ public class FootballTeam {
         }
         players.add(player);
     }
-    ///
 
 
-    /** Removes the player with the given id. Throws if nobody with that id is on the team. */
+    // Removes the player with the given id. Throws if nobody with that id is on the team.
     public void removePlayer(String playerId) throws NotFoundException {
         boolean removed = players.removeIf(p -> p.getId().equals(playerId));
         if (!removed) {
@@ -95,7 +94,7 @@ public class FootballTeam {
         }
     }
 
-    /** Adds a coach. Throws an exception, and adds nothing, if the coach is null or already here. */
+    // Adds a coach. Throws an exception, and adds nothing, if the coach is null or already here.
     public void addCoach(Coach coach) throws InvalidDataException, DuplicateEntryException {
         if (coach == null) {
             throw new InvalidDataException("Coach cannot be null.");
@@ -169,10 +168,10 @@ public class FootballTeam {
         return squadSize;
     }
 
-    /** The squad size cannot be negative, or smaller than the number of players already on the team. */
+    // The squad size cannot be negative, or smaller than the number of players already on the team.
     public void setSquadSize(int squadSize) throws InvalidDataException {
-        if (squadSize < 0) {
-            throw new InvalidDataException("Squad size cannot be negative (value given: " + squadSize + ").");
+        if (squadSize < 1) {
+            throw new InvalidDataException("Squad size must be at least 1 (value given: " + squadSize + ").");
         }
         if (squadSize < players.size()) {
             throw new InvalidDataException("Squad size cannot be less than the " + players.size()
