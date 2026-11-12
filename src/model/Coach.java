@@ -42,7 +42,7 @@ public class Coach extends Person {
     }
 
    public void setQualification(String qualification) throws InvalidDataException {
-        if (qualification == null || qualification.trim().isEmpty()) {
+       if (qualification == null || qualification.trim().isEmpty()) {
             throw new InvalidDataException("Qualification cannot be blank.");
         }
         this.qualification = qualification.trim();
