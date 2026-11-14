@@ -71,17 +71,35 @@ Where this file lives: `docs/contribution-log.md`
 | Brandon Bell |Created person class and its derived classes. Reviewed exceptions and fixing errors within the menu class.| 4| [Person refactor](https://github.com/brandonbell2357-wq/Kingston-Premier-Football-League-KPFL-/commit/fc2a358), [MatchOfficial update](https://github.com/brandonbell2357-wq/Kingston-Premier-Football-League-KPFL-/commit/9f9adfb), [Menu](https://github.com/brandonbell2357-wq/Kingston-Premier-Football-League-KPFL-/commit/95b8c33), [PR #8](https://github.com/brandonbell2357-wq/Kingston-Premier-Football-League-KPFL-/pull/8), [PR #11](https://github.com/brandonbell2357-wq/Kingston-Premier-Football-League-KPFL-/pull/11) |
 | Theo-Jean Forester | | | |
 | Landan Williams | Creation Of custom exception classes and Implementing then on existing classes | 4| |
-| Lamar Martin | Implemented Stadium and FootballTeam domain entity classes with full field encapsulation, input validation checks and initial unit tests in test/StadiumTest.java.|4.1|[\`src/model/Stadium.java\`](../src/model/Stadium.java)|
+| Lamar Martin | Developed the Stadium and FootballTeam domain entity classes (field encapsulation and input validation) with AI assistance: Gemini drafted the code, and I checked, changed and tested it. The files were uploaded to the repository by Brandon Bell. Following an AI-assisted code review with (Claude), made and committed 4 fixes on branch fix/review-issues and raised issue #9 for the remaining cleanup, assigned to the authors. | 4.1 + (2) | src/model/Stadium.java, src/model/FootballTeam.java (uploaded by Brandon Bell),[pull request #10](https://github.com/brandonbell2357-wq/Kingston-Premier-Football-League-KPFL-/pull/10), [issue #9](https://github.com/brandonbell2357-wq/Kingston-Premier-Football-League-KPFL-/issues/9) |
 
 ### Decisions made
-- Encapsulated \`FootballTeam\` status initialization to default to 'Pending' upon creation.
-- Defined \`Stadium\` capacity and ticket price validation in model constructors to prevent invalid values before service execution.
-- TBD
+- Encapsulated `FootballTeam` status initialization to default to 'Pending' upon creation.
+- Defined `Stadium` capacity and ticket price validation in model constructors to prevent invalid values before service execution.
+- `Menu` is the only console menu; `Main` just starts it.
+- A team's squad size must be at least 1.
+- A person's ID can be set after creation through `setId()`, with the same blank/null validation as the constructor.
+- Style fixes in other members' code are raised as an issue for the author instead of being changed directly.
 
 ### Problems and how they were solved
--Problem: Preventing empty or invalid string inputs for registration numbers and stadium names.
--Solution: Added trim and null/blank checks in class constructors throwing \`IllegalArgumentException\`.
-- TBD
+Problem 0: Preventing empty or invalid string inputs for registration numbers and stadium names.
+Solution: Added trim and null/blank checks in class constructors throwing \`IllegalArgumentException\`.
+
+Problem 1: Two different console menus. Main.java had its own menu (options 1–5, exit on 5), while Menu.java had a different, more complete menu (options 1–4, exit on 0, with submenus) that was never called. 
+Solution: Rewrote Main.java so it only prints the title banner and calls new Menu().run(). Menu is now the single console menu. The demo Stadium/FootballTeam creation in Main was removed.
+
+Problem 2: Program crashed when input ended. When the input stream ended (Ctrl+D / Ctrl+Z, or piped input ran out), scanner.nextLine() threw NoSuchElementException and the program stopped with an error. 
+Solution: In Menu.readInt(), check scanner.hasNextLine() before reading. If there is no more input, return 0, which means "Back" in a submenu and "Save and Exit" in the main menu, so the program closes cleanly.
+
+Problem 3: Default constructors created people with an ID that could never change. Person() sets the ID to "000", and id was declared final, so an object made with a default constructor (for example new Player()) could never get a real ID. Two default players on the same team clashed with "A player with ID 000 is already on this team". 
+Solution: Removed final from Person.id and added a setId() setter that rejects null or blank IDs, matching the validation in the constructor. Also corrected the comments in Spectator and LeagueCommissioner, which wrongly said the default constructor uses "empty text" (it actually sets ID "000" and name/gender "N/A").
+
+Problem 4: A team could be created with a squad size of 0. FootballTeam.setSquadSize() only rejected negative numbers, so a team with squad size 0 was accepted, and then every addPlayer() call failed with "The squad is full (maximum 0 players)". 
+Solution: Changed the check in setSquadSize() to squadSize < 1, with the message "Squad size must be at least 1".
+
+### Remaining issues
+Remaining cleanup raised as issue #9 (not fixed yet): a personal VS Code workspace file committed in src/exception, a split package line in UnderageException.java, a stray /// line in FootballTeam.java, and wrong indentation in Coach.java. Assigned to Brandon Bell and Landan Williams, with step-by-step instructions in the issue.
+
 
 ### Plan for next week
 
@@ -90,11 +108,12 @@ Where this file lives: `docs/contribution-log.md`
 | Brandon Bell | |
 | Theo-Jean Forester | |
 | Landan Williams |  |
-| Lamar Martin| Implement custom exception package and Collaboration on fixture and standing logic|
+| Lamar Martin | Implement the Fixture class and match result recording (points for win/draw/loss), add any fixture-related exceptions, and collaborate on standings logic |
 
 ### AI assistance and sources
-* Used Gemini Notebook for drafting input validation logic and unit test generation for \`FootballTeam.java\`, \`Stadium.java\`, and \`StadiumTest.java\`. Code was reviewed and verified and committed by Lamar Martin.
-- TBD
+Used Gemini Notebook to draft the code for Stadium.java and FootballTeam.java, including the input validation logic. Lamar Martin checked changed and tested the code; it was uploaded to the repository by Brandon Bell.
+
+Used Claude (Anthropic) to review and compile the Week 2 code to explain a few of the issues found. Claude explained and how to fix; Lamar Martin made every edit, opened the pull request and raised issue #9.
 
 ---
 

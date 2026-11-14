@@ -8,9 +8,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * A football team. It aggregates its players and coaches: they are stored here,
- * but they are independent people who can leave or move to another team.
+/*
+  A football team. It aggregates its players and coaches: they are stored here,
+  but they are independent people who can leave or move to another team.
  */
 public class FootballTeam {
     private String registrationNumber;
@@ -22,7 +22,7 @@ public class FootballTeam {
     private final List<Player> players = new ArrayList<>();
     private final List<Coach> coaches = new ArrayList<>();
 
-    /** Default constructor: empty text, squad size 0, status PENDING and no people. */
+    //Default constructor: empty text, squad size 0, status PENDING and no people
     public FootballTeam() {
         this.registrationNumber = "";
         this.name = "";
@@ -42,9 +42,9 @@ public class FootballTeam {
         this.points = 0;
     }
 
-    /**
-     * Copy constructor: copies the team and makes a separate copy of each player and coach,
-     * so changing the copy never changes the original.
+    /*
+      Copy constructor: copies the team and makes a separate copy of each player and coach,
+      so changing the copy never changes the original.
      */
     public FootballTeam(FootballTeam other) {
         this.registrationNumber = other.registrationNumber;
@@ -61,10 +61,10 @@ public class FootballTeam {
         }
     }
 
-    /**
-     * Adds a player. Throws an exception, and adds nothing, if the player is null,
-     * the squad is full (the squad size is the maximum), or a player with the same
-     * id or jersey number is already here.
+    /*
+     Adds a player. Throws an exception, and adds nothing, if the player is null,
+     the squad is full (the squad size is the maximum), or a player with the same
+      id or jersey number is already here.
      */
     public void addPlayer(Player player)
             throws InvalidDataException, SquadFullException, DuplicateEntryException {
@@ -84,10 +84,8 @@ public class FootballTeam {
         }
         players.add(player);
     }
-    
 
-
-    /** Removes the player with the given id. Throws if nobody with that id is on the team. */
+    // Removes the player with the given id. Throws if nobody with that id is on the team.
     public void removePlayer(String playerId) throws NotFoundException {
         boolean removed = players.removeIf(p -> p.getId().equals(playerId));
         if (!removed) {
@@ -95,7 +93,7 @@ public class FootballTeam {
         }
     }
 
-    /** Adds a coach. Throws an exception, and adds nothing, if the coach is null or already here. */
+    // Adds a coach. Throws an exception, and adds nothing, if the coach is null or already here.
     public void addCoach(Coach coach) throws InvalidDataException, DuplicateEntryException {
         if (coach == null) {
             throw new InvalidDataException("Coach cannot be null.");
@@ -108,7 +106,7 @@ public class FootballTeam {
         coaches.add(coach);
     }
 
-    /** Removes the coach with the given id. Throws if nobody with that id is on the team. */
+    // Removes the coach with the given id. Throws if nobody with that id is on the team
     public void removeCoach(String coachId) throws NotFoundException {
         boolean removed = coaches.removeIf(c -> c.getId().equals(coachId));
         if (!removed) {
@@ -116,7 +114,7 @@ public class FootballTeam {
         }
     }
 
-    /** True only for REGISTERED teams, which are the only ones that should be placed in fixtures. */
+    // True only for REGISTERED teams, which are the only ones that should be placed in fixtures
     public boolean isEligibleForFixtures() {
         return status == TeamStatus.REGISTERED;
     }
@@ -169,10 +167,10 @@ public class FootballTeam {
         return squadSize;
     }
 
-    /** The squad size cannot be negative, or smaller than the number of players already on the team. */
+    // The squad size cannot be negative, or smaller than the number of players already on the team.
     public void setSquadSize(int squadSize) throws InvalidDataException {
-        if (squadSize < 0) {
-            throw new InvalidDataException("Squad size cannot be negative (value given: " + squadSize + ").");
+        if (squadSize < 1) {
+            throw new InvalidDataException("Squad size must be at least 1 (value given: " + squadSize + ").");
         }
         if (squadSize < players.size()) {
             throw new InvalidDataException("Squad size cannot be less than the " + players.size()
