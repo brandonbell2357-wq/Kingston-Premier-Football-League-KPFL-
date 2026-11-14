@@ -68,7 +68,7 @@ Where this file lives: `docs/contribution-log.md`
 
 | Member | What I did | Hours | Evidence |
 | --- | --- | --- | --- |
-| Brandon Bell |Created person class and its derived classes. Created a few exceptions| 4| |
+| Brandon Bell |Created person class and its derived classes. Reviewed exceptions and fixing errors within the menu class.| 4| [Person refactor](https://github.com/brandonbell2357-wq/Kingston-Premier-Football-League-KPFL-/commit/fc2a358), [MatchOfficial update](https://github.com/brandonbell2357-wq/Kingston-Premier-Football-League-KPFL-/commit/9f9adfb), [Menu](https://github.com/brandonbell2357-wq/Kingston-Premier-Football-League-KPFL-/commit/95b8c33), [PR #8](https://github.com/brandonbell2357-wq/Kingston-Premier-Football-League-KPFL-/pull/8), [PR #11](https://github.com/brandonbell2357-wq/Kingston-Premier-Football-League-KPFL-/pull/11) |
 | Theo-Jean Forester | | | |
 | Landan Williams | Creation Of custom exception classes and Implementing then on existing classes | 4| |
 | Lamar Martin | Developed the Stadium and FootballTeam domain entity classes (field encapsulation and input validation) with AI assistance: Gemini drafted the code, and I checked, changed and tested it. The files were uploaded to the repository by Brandon Bell. Following an AI-assisted code review with (Claude), made and committed 4 fixes on branch fix/review-issues and raised issue #9 for the remaining cleanup, assigned to the authors. | 4.1 + (2) | src/model/Stadium.java, src/model/FootballTeam.java (uploaded by Brandon Bell),[pull request #10](https://github.com/brandonbell2357-wq/Kingston-Premier-Football-League-KPFL-/pull/10), [issue #9](https://github.com/brandonbell2357-wq/Kingston-Premier-Football-League-KPFL-/issues/9) |
