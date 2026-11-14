@@ -1,9 +1,17 @@
 package model;
 
+import exception.DuplicateEntryException;
+import exception.FixtureStateException;
 import exception.InvalidDataException;
+import exception.NotFoundException;
+import exception.SchedulingConflictException;
 import exception.TeamNotEligibleException;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
 /*
   A match between a home team and an away team at a stadium on a date and time.
@@ -19,6 +27,7 @@ public class Fixture {
     private LocalTime time;
     private FixtureStatus status;
     private int ticketsSold;
+    private final List<MatchOfficial> officials = new ArrayList<>();
 
     
      /* Creates a SCHEDULED fixture.
@@ -69,11 +78,83 @@ public class Fixture {
         this.time = other.time;
         this.status = other.status;
         this.ticketsSold = other.ticketsSold;
+        this.officials.addAll(other.officials);
     }
 
     // True if the given team is the home or away team in this fixture. 
     public boolean involves(FootballTeam team) {
         return team != null && (homeTeam == team || awayTeam == team);
+    }
+
+    // ---------- Official assignment (BR3) ----------
+
+    /**
+     * True if the other fixture is a different fixture held on the same date AND at the same time.
+     * Only an identical date and time counts as a clash (same day at another time is fine).
+     */
+    public boolean clashesWith(Fixture other) {
+        return other != null && other != this
+                && date.equals(other.date) && time.equals(other.time);
+    }
+
+    /** True if this official is already assigned to this fixture. */
+    public boolean hasOfficial(MatchOfficial official) {
+        if (official == null) {
+            return false;
+        }
+        for (MatchOfficial assigned : officials) {
+            if (assigned.getId().equals(official.getId())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Assigns a match official to this fixture. Every check runs first, so a refused
+     * assignment changes nothing.
+     *
+     * @param official      the official to assign
+     * @param otherFixtures all other fixtures in the league, used to check BR3
+     */
+    public void assignOfficial(MatchOfficial official, Collection<Fixture> otherFixtures)
+            throws InvalidDataException, DuplicateEntryException,
+                   FixtureStateException, SchedulingConflictException {
+        if (official == null) {
+            throw new InvalidDataException("Official cannot be null.");
+        }
+        if (status != FixtureStatus.SCHEDULED) {
+            throw new FixtureStateException("Officials can only be assigned to a scheduled fixture ("
+                    + fixtureId + " is " + status + ").");
+        }
+        if (!official.isAvailable()) {
+            throw new InvalidDataException(official.getName() + " is marked as unavailable.");
+        }
+        if (hasOfficial(official)) {
+            throw new DuplicateEntryException(official.getName() + " is already assigned to " + fixtureId + ".");
+        }
+        if (otherFixtures != null) {
+            for (Fixture other : otherFixtures) {
+                if (clashesWith(other) && other.hasOfficial(official)) {
+                    throw new SchedulingConflictException(official.getName() + " is already assigned to "
+                            + other.getFixtureId() + " on " + date + " at " + time + ".");
+                }
+            }
+        }
+        officials.add(official);
+    }
+
+    /** Removes the official with the given ID. Throws if that official is not assigned here. */
+    public void removeOfficial(String officialId) throws NotFoundException {
+        boolean removed = officials.removeIf(o -> o.getId().equals(officialId));
+        if (!removed) {
+            throw new NotFoundException("No official with ID " + officialId + " is assigned to " + fixtureId + ".");
+        }
+    }
+
+    /** The officials assigned to this fixture. The list cannot be changed from outside. */
+    public List<MatchOfficial> getOfficials() {
+        return Collections.unmodifiableList(officials);
     }
 
     public String getFixtureId() {
@@ -160,3 +241,4 @@ public class Fixture {
                 + ticketsSold + "/" + stadium.getSeatingCapacity() + " seats taken)";
     }
 }
+
