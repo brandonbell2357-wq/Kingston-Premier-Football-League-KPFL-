@@ -4,7 +4,6 @@ package ui;
 import exception.InvalidDataException;
 import model.FootballTeam;
 import model.Stadium;
-
 import java.math.BigDecimal;
 import java.util.Scanner;
 
