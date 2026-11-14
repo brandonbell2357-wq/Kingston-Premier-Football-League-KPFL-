@@ -11,7 +11,7 @@ This repository holds the group's six-week object-oriented programming project.
 | Brandon Bell | To be assigned |
 | Theo-Jean Forester | To be assigned |
 | Landan Williams | To be assigned |
-| Lamar Martin| To be assigned |
+| Lamar Martin| Fixtures and Stadium Leads  |
 
 ## Repository layout
 
