@@ -27,6 +27,7 @@ public class Fixture {
     private LocalTime time;
     private FixtureStatus status;
     private int ticketsSold;
+    private MatchResult result; // null until the fixture is completed (BR8)
     private final List<MatchOfficial> officials = new ArrayList<>();
 
     
@@ -78,6 +79,7 @@ public class Fixture {
         this.time = other.time;
         this.status = other.status;
         this.ticketsSold = other.ticketsSold;
+        this.result = other.result == null ? null : new MatchResult(other.result);
         this.officials.addAll(other.officials);
     }
 
@@ -155,6 +157,48 @@ public class Fixture {
     /** The officials assigned to this fixture. The list cannot be changed from outside. */
     public List<MatchOfficial> getOfficials() {
         return Collections.unmodifiableList(officials);
+    }
+
+    // ---------- Results (BR8) ----------
+
+    /**
+     * Completes this fixture with its result. This is the ONLY way a fixture becomes
+     * COMPLETED (there is deliberately no setStatus), so a fixture can never be
+     * completed without a valid result (BR8). Every check runs first, so a refused
+     * call changes nothing.
+     *
+     * @param matchResult the final score; it must not be null
+     * @throws FixtureStateException if there is no result, or the fixture is already completed
+     */
+    public void complete(MatchResult matchResult) throws FixtureStateException {
+        if (matchResult == null) {
+            throw new FixtureStateException("Fixture " + fixtureId
+                    + " cannot be completed without a valid result.");
+        }
+        if (status == FixtureStatus.COMPLETED) {
+            throw new FixtureStateException("Fixture " + fixtureId
+                    + " is already completed (result " + result + ").");
+        }
+        this.result = matchResult;
+        this.status = FixtureStatus.COMPLETED;
+    }
+
+    /** True once a result has been recorded. */
+    public boolean isCompleted() {
+        return status == FixtureStatus.COMPLETED;
+    }
+
+    /** The recorded result, or null while the fixture is still SCHEDULED. */
+    public MatchResult getResult() {
+        return result;
+    }
+
+    /** The winning team, or null if the fixture is not completed or ended in a draw. */
+    public FootballTeam getWinner() {
+        if (result == null || result.isDraw()) {
+            return null;
+        }
+        return result.isHomeWin() ? homeTeam : awayTeam;
     }
 
     public String getFixtureId() {
@@ -237,7 +281,8 @@ public class Fixture {
     @Override
     public String toString() {
         return fixtureId + ": " + homeTeam.getName() + " vs " + awayTeam.getName()
-                + " at " + stadium.getName() + " on " + date + " at " + time + " (" + status + ", "
+                + " at " + stadium.getName() + " on " + date + " at " + time + " (" + status
+                + (result == null ? "" : " " + result) + ", "
                 + ticketsSold + "/" + stadium.getSeatingCapacity() + " seats taken)";
     }
 }
