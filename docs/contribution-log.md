@@ -128,7 +128,7 @@ Used Claude (Anthropic) to review and compile the Week 2 code to explain a few o
 | --- | --- | --- | --- |
 | Brandon Bell | | | |
 | Theo-Jean Forester | | | |
-| Landan Williams | | | |
+| Landan Williams |Create the StandingsService(), MatchResult() & standingsEntry() classes| 3 | |
 | Lamar | | | |
 
 ### Decisions made
