@@ -35,9 +35,9 @@ public class Player extends Person {
 
         
         super(id, name, age, gender);
-        setPosition(position);
-        setJerseyNumber(jerseyNumber);
-        setPlayingStatus(playingStatus);
+        this.position = position;
+        this.jerseyNumber = jerseyNumber;
+        this.playingStatus = playingStatus;
         this.goals = 0;
     }
 

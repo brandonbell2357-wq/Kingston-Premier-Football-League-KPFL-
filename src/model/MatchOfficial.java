@@ -19,8 +19,8 @@ public class MatchOfficial extends Person {
     public MatchOfficial(String id, String name, int age, String gender, String officialRole,
                          String rank) throws InvalidDataException {
         super(id, name, age, gender);
-        setOfficialRole(officialRole);
-        setRank(rank);
+        this.officialRole = officialRole;
+        this.rank = rank;
         this.available = true;
     }
 

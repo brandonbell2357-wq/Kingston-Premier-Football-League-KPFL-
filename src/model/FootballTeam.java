@@ -6,6 +6,7 @@ import exception.NotFoundException;
 import exception.SquadFullException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 /*
@@ -34,10 +35,10 @@ public class FootballTeam {
 
     public FootballTeam(String registrationNumber, String name, String parish, int squadSize)
             throws InvalidDataException {
-        setRegistrationNumber(registrationNumber);
-        setName(name);
-        setParish(parish);
-        setSquadSize(squadSize);
+       this.registrationNumber = registrationNumber;
+        this.name = name;
+        this.parish = parish;
+        this.squadSize = squadSize;
         this.status = TeamStatus.PENDING;
         this.points = 0;
     }
@@ -87,7 +88,17 @@ public class FootballTeam {
 
     // Removes the player with the given id. Throws if nobody with that id is on the team.
     public void removePlayer(String playerId) throws NotFoundException {
-        boolean removed = players.removeIf(p -> p.getId().equals(playerId));
+        boolean removed = false;
+        Iterator<Player> iterator = players.iterator();
+
+        while (iterator.hasNext()) {
+            Player player = iterator.next();
+            if (player.getId().equals(playerId)) {
+                iterator.remove();
+                removed = true;
+            }
+        }
+
         if (!removed) {
             throw new NotFoundException("No player with ID " + playerId + " is on this team.");
         }
