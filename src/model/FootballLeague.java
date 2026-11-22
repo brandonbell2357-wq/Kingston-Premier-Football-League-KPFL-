@@ -1,0 +1,264 @@
+package model;
+
+import exception.DuplicateEntryException;
+import exception.FixtureStateException;
+import exception.InvalidDataException;
+import exception.NotFoundException;
+import exception.SchedulingConflictException;
+import exception.TeamNotEligibleException;
+import service.StandingsService;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+/*
+  Coordinates the league: it keeps the lists of teams, stadiums, match officials and
+  fixtures, and applies the scheduling rules that need to look at more than one fixture.
+
+  Relationships (see the UML):
+    - Teams, stadiums and officials are aggregated: they exist on their own.
+    - Fixtures belong to the league (composition).
+    - Standings are never stored; they are rebuilt from completed fixtures by StandingsService.
+
+  Rules enforced here:
+    BR1  only registered teams in a fixture      (checked by the Fixture constructor)
+    BR2  a team cannot play two fixtures at the same date and time
+    BR3  an official cannot be in two fixtures at the same date and time
+    BR8  a fixture is completed only with a valid result
+  A stadium also cannot host two fixtures at the same date and time.
+ */
+public class FootballLeague {
+
+    private String name;
+    private LeagueCommissioner commissioner;
+    private final List<FootballTeam> teams = new ArrayList<>();
+    private final List<Stadium> stadiums = new ArrayList<>();
+    private final List<MatchOfficial> officials = new ArrayList<>();
+    private final List<Fixture> fixtures = new ArrayList<>();
+
+    public FootballLeague() {
+        this.name = "";
+    }
+
+    public FootballLeague(String name) throws InvalidDataException {
+        setName(name);
+    }
+
+    // ---------- Registering ----------
+
+    public void registerTeam(FootballTeam team) throws InvalidDataException, DuplicateEntryException {
+        if (team == null) {
+            throw new InvalidDataException("Team cannot be null.");
+        }
+        for (FootballTeam existing : teams) {
+            if (existing.getRegistrationNumber().equalsIgnoreCase(team.getRegistrationNumber())) {
+                throw new DuplicateEntryException("A team with registration number "
+                        + team.getRegistrationNumber() + " already exists.");
+            }
+        }
+        teams.add(team);
+    }
+
+    public void addStadium(Stadium stadium) throws InvalidDataException, DuplicateEntryException {
+        if (stadium == null) {
+            throw new InvalidDataException("Stadium cannot be null.");
+        }
+        for (Stadium existing : stadiums) {
+            if (existing.getStadiumId().equalsIgnoreCase(stadium.getStadiumId())) {
+                throw new DuplicateEntryException("A stadium with ID " + stadium.getStadiumId() + " already exists.");
+            }
+        }
+        stadiums.add(stadium);
+    }
+
+    public void addOfficial(MatchOfficial official) throws InvalidDataException, DuplicateEntryException {
+        if (official == null) {
+            throw new InvalidDataException("Match official cannot be null.");
+        }
+        for (MatchOfficial existing : officials) {
+            if (existing.getId().equalsIgnoreCase(official.getId())) {
+                throw new DuplicateEntryException("An official with ID " + official.getId() + " already exists.");
+            }
+        }
+        officials.add(official);
+    }
+
+    // ---------- Lookups ----------
+
+    public FootballTeam findTeam(String registrationNumber) throws NotFoundException {
+        for (FootballTeam team : teams) {
+            if (team.getRegistrationNumber().equalsIgnoreCase(trim(registrationNumber))) {
+                return team;
+            }
+        }
+        throw new NotFoundException("No team with registration number " + trim(registrationNumber) + ".");
+    }
+
+    public Stadium findStadium(String stadiumId) throws NotFoundException {
+        for (Stadium stadium : stadiums) {
+            if (stadium.getStadiumId().equalsIgnoreCase(trim(stadiumId))) {
+                return stadium;
+            }
+        }
+        throw new NotFoundException("No stadium with ID " + trim(stadiumId) + ".");
+    }
+
+    public MatchOfficial findOfficial(String officialId) throws NotFoundException {
+        for (MatchOfficial official : officials) {
+            if (official.getId().equalsIgnoreCase(trim(officialId))) {
+                return official;
+            }
+        }
+        throw new NotFoundException("No match official with ID " + trim(officialId) + ".");
+    }
+
+    public Fixture findFixture(String fixtureId) throws NotFoundException {
+        for (Fixture fixture : fixtures) {
+            if (fixture.getFixtureId().equalsIgnoreCase(trim(fixtureId))) {
+                return fixture;
+            }
+        }
+        throw new NotFoundException("No fixture with ID " + trim(fixtureId) + ".");
+    }
+
+    /** Teams whose name, registration number or parish contains the text (ignoring case). */
+    public List<FootballTeam> searchTeams(String text) {
+        String wanted = trim(text).toLowerCase();
+        List<FootballTeam> found = new ArrayList<>();
+        for (FootballTeam team : teams) {
+            if (team.getName().toLowerCase().contains(wanted)
+                    || team.getRegistrationNumber().toLowerCase().contains(wanted)
+                    || team.getParish().toLowerCase().contains(wanted)) {
+                found.add(team);
+            }
+        }
+        return found;
+    }
+
+    // ---------- Scheduling (BR1, BR2) ----------
+
+    /**
+     * Creates a fixture after checking every rule. If any check fails nothing is added.
+     *
+     * @throws TeamNotEligibleException     BR1: a team is pending or suspended
+     * @throws SchedulingConflictException  BR2: a team is already playing at that date and time,
+     *                                      or the stadium is already booked
+     */
+    public Fixture scheduleFixture(String fixtureId, String homeRegNo, String awayRegNo, String stadiumId,
+                                   LocalDate date, LocalTime time)
+            throws InvalidDataException, NotFoundException, DuplicateEntryException,
+                   TeamNotEligibleException, SchedulingConflictException {
+
+        if (fixtureId == null || fixtureId.trim().isEmpty()) {
+            throw new InvalidDataException("Fixture ID cannot be blank.");
+        }
+        for (Fixture existing : fixtures) {
+            if (existing.getFixtureId().equalsIgnoreCase(fixtureId.trim())) {
+                throw new DuplicateEntryException("A fixture with ID " + fixtureId.trim() + " already exists.");
+            }
+        }
+
+        FootballTeam home = findTeam(homeRegNo);
+        FootballTeam away = findTeam(awayRegNo);
+        Stadium stadium = findStadium(stadiumId);
+
+        // The Fixture constructor enforces BR1 and rejects a team playing itself or a missing date/time.
+        Fixture fixture = new Fixture(fixtureId, home, away, stadium, date, time);
+
+        // BR2 and the stadium clash: compare with every other fixture at the same date AND time.
+        for (Fixture other : fixtures) {
+            if (!fixture.clashesWith(other)) {
+                continue;
+            }
+            if (other.involves(home)) {
+                throw new SchedulingConflictException(home.getName() + " already plays in "
+                        + other.getFixtureId() + " on " + date + " at " + time + ".");
+            }
+            if (other.involves(away)) {
+                throw new SchedulingConflictException(away.getName() + " already plays in "
+                        + other.getFixtureId() + " on " + date + " at " + time + ".");
+            }
+            if (other.getStadium().getStadiumId().equalsIgnoreCase(stadium.getStadiumId())) {
+                throw new SchedulingConflictException(stadium.getName() + " is already booked for "
+                        + other.getFixtureId() + " on " + date + " at " + time + ".");
+            }
+        }
+
+        fixtures.add(fixture);
+        return fixture;
+    }
+
+    /** Assigns an official to a fixture. BR3 is checked against every fixture in the league. */
+    public void assignOfficial(String fixtureId, String officialId)
+            throws InvalidDataException, NotFoundException, DuplicateEntryException,
+                   FixtureStateException, SchedulingConflictException {
+        Fixture fixture = findFixture(fixtureId);
+        MatchOfficial official = findOfficial(officialId);
+        fixture.assignOfficial(official, fixtures);
+    }
+
+    // ---------- Results and standings (BR5, BR8) ----------
+
+    /**
+     * Records the final score, completes the fixture, and updates every team's points.
+     * A negative score (BR5) or a second result for the same fixture (BR8) is refused.
+     */
+    public void recordResult(String fixtureId, int homeGoals, int awayGoals)
+            throws InvalidDataException, NotFoundException, FixtureStateException {
+        Fixture fixture = findFixture(fixtureId);
+        fixture.complete(new MatchResult(homeGoals, awayGoals));
+        StandingsService.applyPointsToTeams(getStandings());
+    }
+
+    /** The league table, rebuilt from completed fixtures (win 3, draw 1, loss 0). */
+    public List<StandingsEntry> getStandings() throws InvalidDataException {
+        return StandingsService.buildStandings(teams, fixtures);
+    }
+
+    // ---------- Accessors ----------
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) throws InvalidDataException {
+        if (name == null || name.trim().isEmpty()) {
+            throw new InvalidDataException("League name cannot be blank.");
+        }
+        this.name = name.trim();
+    }
+
+    public LeagueCommissioner getCommissioner() {
+        return commissioner;
+    }
+
+    public void setCommissioner(LeagueCommissioner commissioner) throws InvalidDataException {
+        if (commissioner == null) {
+            throw new InvalidDataException("Commissioner cannot be null.");
+        }
+        this.commissioner = commissioner;
+    }
+
+    public List<FootballTeam> getTeams() {
+        return Collections.unmodifiableList(teams);
+    }
+
+    public List<Stadium> getStadiums() {
+        return Collections.unmodifiableList(stadiums);
+    }
+
+    public List<MatchOfficial> getOfficials() {
+        return Collections.unmodifiableList(officials);
+    }
+
+    public List<Fixture> getFixtures() {
+        return Collections.unmodifiableList(fixtures);
+    }
+
+    private static String trim(String text) {
+        return text == null ? "" : text.trim();
+    }
+}
