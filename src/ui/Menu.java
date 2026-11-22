@@ -1,17 +1,42 @@
 package ui;
 
+import exception.KPFLException;
+import model.Coach;
+import model.FootballLeague;
+import model.FootballTeam;
+import model.Fixture;
+import model.LeagueCommissioner;
+import model.MatchOfficial;
+import model.Player;
+import model.Stadium;
+import model.StandingsEntry;
+import model.TeamStatus;
+import service.StandingsService;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
+import java.util.List;
 import java.util.Scanner;
 
 /*
   Console menu for the KPFL system following the Console Menu Design
   in the Week 1 requirements document (section 8).
-  Each option currently prints a placeholder; later weeks replace
-  these with calls to the service classes.
+  Week 3 options (teams, squads, stadiums, officials, fixtures, results, standings) call
+  the FootballLeague. Every action is wrapped in try/catch so a broken business rule
+  shows the exception's message instead of crashing. Ticketing, shop and the other
+  reports are still placeholders (Week 4).
   In every menu the last option goes back (or saves and exits on the main menu).
  */
 public class Menu {
 
     private final Scanner scanner = new Scanner(System.in);
+    private final FootballLeague league;
+
+    public Menu(FootballLeague league) {
+        this.league = league;
+    }
 
     // Runs the main menu until the user chooses Save Data & Exit. 
     public void run() {
@@ -63,11 +88,11 @@ public class Menu {
             System.out.println("6. Return to Main Menu");
             int choice = readInt("Enter option (1-6): ", 1, 6);
             switch (choice) {
-                case 1 -> notImplemented("1.1 Register New Team");
-                case 2 -> notImplemented("1.2 Update / Approve / Suspend Team Status");
-                case 3 -> notImplemented("1.3 Search & Display Team Details");
-                case 4 -> notImplemented("1.4 Add Player / Coach to Squad");
-                case 5 -> notImplemented("1.5 Remove Player / Coach from Squad");
+                case 1 -> registerTeam();
+                case 2 -> changeTeamStatus();
+                case 3 -> searchTeams();
+                case 4 -> addToSquad();
+                case 5 -> removeFromSquad();
                 case 6 -> back = true;
             }
         }
@@ -86,11 +111,11 @@ public class Menu {
             System.out.println("6. Return to Main Menu");
             int choice = readInt("Enter option (1-6): ", 1, 6);
             switch (choice) {
-                case 1 -> notImplemented("2.1 Register Stadium");
-                case 2 -> notImplemented("2.2 Register Match Official");
-                case 3 -> notImplemented("2.3 Create Fixture");
-                case 4 -> notImplemented("2.4 Assign Match Official to Fixture");
-                case 5 -> notImplemented("2.5 Record Match Result & Update Standings");
+                case 1 -> registerStadium();
+                case 2 -> registerOfficial();
+                case 3 -> createFixture();
+                case 4 -> assignOfficial();
+                case 5 -> recordResult();
                 case 6 -> back = true;
             }
         }
@@ -126,12 +151,276 @@ public class Menu {
             System.out.println("4. Return to Main Menu");
             int choice = readInt("Enter option (1-4): ", 1, 4);
             switch (choice) {
-                case 1 -> notImplemented("4.1 League Standings Report");
+                case 1 -> showStandings();
                 case 2 -> notImplemented("4.2 Fixtures, Attendance & Ticket Revenue Report");
                 case 3 -> notImplemented("4.3 Shop Sales & Low Stock Report");
                 case 4 -> back = true;
             }
         }
+    }
+
+
+    // ---------- 1. Team & Squad Management ----------
+
+    private void registerTeam() {
+        try {
+            String regNo = ask("Registration number: ");
+            String name = ask("Team name: ");
+            String parish = ask("Parish: ");
+            int squadSize = askInt("Maximum squad size: ");
+            league.registerTeam(new FootballTeam(regNo, name, parish, squadSize));
+            System.out.println("Team registered with status PENDING. A commissioner must approve it before it can play.");
+        } catch (KPFLException e) {
+            System.out.println("Cannot register team: " + e.getMessage());
+        } catch (NumberFormatException e) {
+            System.out.println("Cannot register team: squad size must be a whole number.");
+        }
+    }
+
+    private void changeTeamStatus() {
+        try {
+            listTeams();
+            FootballTeam team = league.findTeam(ask("Team registration number: "));
+            System.out.println(team.getName() + " is currently " + team.getStatus() + ".");
+            System.out.println("1. Approve (REGISTERED)   2. Suspend   3. Cancel");
+            int choice = readInt("Enter option (1-3): ", 1, 3);
+            LeagueCommissioner commissioner = league.getCommissioner();
+            if (choice == 3) {
+                return;
+            }
+            if (commissioner == null) {
+                System.out.println("There is no league commissioner to approve or suspend teams.");
+                return;
+            }
+            if (choice == 1) {
+                commissioner.approveTeam(team);
+            } else {
+                commissioner.suspendTeam(team);
+            }
+            System.out.println(team.getName() + " is now " + team.getStatus() + ".");
+        } catch (KPFLException e) {
+            System.out.println("Cannot change status: " + e.getMessage());
+        }
+    }
+
+    private void searchTeams() {
+        String text = ask("Search by name, registration number or parish: ");
+        List<FootballTeam> found = league.searchTeams(text);
+        if (found.isEmpty()) {
+            System.out.println("No teams match \"" + text + "\".");
+            return;
+        }
+        for (FootballTeam team : found) {
+            System.out.println();
+            System.out.println(team);
+            for (Player player : team.getPlayers()) {
+                System.out.println("   " + player.describe());
+            }
+            for (Coach coach : team.getCoaches()) {
+                System.out.println("   " + coach.describe());
+            }
+        }
+    }
+
+    private void addToSquad() {
+        try {
+            listTeams();
+            FootballTeam team = league.findTeam(ask("Team registration number: "));
+            System.out.println("1. Player   2. Coach   3. Cancel");
+            int choice = readInt("Enter option (1-3): ", 1, 3);
+            if (choice == 3) {
+                return;
+            }
+            String id = ask("ID: ");
+            String name = ask("Name: ");
+            int age = askInt("Age: ");
+            String gender = ask("Gender: ");
+            if (choice == 1) {
+                String position = ask("Position: ");
+                int jersey = askInt("Jersey number (1-99): ");
+                String status = ask("Playing status (e.g. Active): ");
+                team.addPlayer(new Player(id, name, age, gender, position, jersey, status));
+                System.out.println("Player added to " + team.getName() + ".");
+            } else {
+                String qualification = ask("Qualification: ");
+                String role = ask("Coaching role: ");
+                team.addCoach(new Coach(id, name, age, gender, qualification, role));
+                System.out.println("Coach added to " + team.getName() + ".");
+            }
+        } catch (KPFLException e) {
+            System.out.println("Cannot add to squad: " + e.getMessage());
+        } catch (NumberFormatException e) {
+            System.out.println("Cannot add to squad: age and jersey number must be whole numbers.");
+        }
+    }
+
+    private void removeFromSquad() {
+        try {
+            listTeams();
+            FootballTeam team = league.findTeam(ask("Team registration number: "));
+            System.out.println("1. Player   2. Coach   3. Cancel");
+            int choice = readInt("Enter option (1-3): ", 1, 3);
+            if (choice == 3) {
+                return;
+            }
+            String id = ask("ID to remove: ");
+            if (choice == 1) {
+                team.removePlayer(id);
+            } else {
+                team.removeCoach(id);
+            }
+            System.out.println("Removed " + id.trim() + " from " + team.getName() + ".");
+        } catch (KPFLException e) {
+            System.out.println("Cannot remove: " + e.getMessage());
+        }
+    }
+
+    // ---------- 2. Fixtures & Match Operations ----------
+
+    private void registerStadium() {
+        try {
+            String id = ask("Stadium ID: ");
+            String name = ask("Name: ");
+            String location = ask("Location: ");
+            int capacity = askInt("Seating capacity: ");
+            String condition = ask("Field condition: ");
+            BigDecimal price = new BigDecimal(ask("Ticket price (e.g. 1500.00): "));
+            league.addStadium(new Stadium(id, name, location, capacity, condition, price));
+            System.out.println("Stadium registered.");
+        } catch (KPFLException e) {
+            System.out.println("Cannot register stadium: " + e.getMessage());
+        } catch (NumberFormatException e) {
+            System.out.println("Cannot register stadium: capacity must be a whole number and price a number.");
+        }
+    }
+
+    private void registerOfficial() {
+        try {
+            String id = ask("Official ID: ");
+            String name = ask("Name: ");
+            int age = askInt("Age: ");
+            String gender = ask("Gender: ");
+            String role = ask("Official role (e.g. Referee): ");
+            String rank = ask("Rank (e.g. Senior): ");
+            league.addOfficial(new MatchOfficial(id, name, age, gender, role, rank));
+            System.out.println("Match official registered.");
+        } catch (KPFLException e) {
+            System.out.println("Cannot register official: " + e.getMessage());
+        } catch (NumberFormatException e) {
+            System.out.println("Cannot register official: age must be a whole number.");
+        }
+    }
+
+    private void createFixture() {
+        try {
+            listTeams();
+            listStadiums();
+            String id = ask("New fixture ID: ");
+            String home = ask("Home team registration number: ");
+            String away = ask("Away team registration number: ");
+            String stadium = ask("Stadium ID: ");
+            LocalDate date = LocalDate.parse(ask("Date (yyyy-mm-dd): "));
+            LocalTime time = LocalTime.parse(ask("Time (hh:mm, 24-hour): "));
+            Fixture fixture = league.scheduleFixture(id, home, away, stadium, date, time);
+            System.out.println("Fixture created: " + fixture);
+        } catch (KPFLException e) {
+            System.out.println("Cannot create fixture: " + e.getMessage());
+        } catch (DateTimeParseException e) {
+            System.out.println("Cannot create fixture: use a date like 2026-12-05 and a time like 15:00.");
+        }
+    }
+
+    private void assignOfficial() {
+        try {
+            listFixtures();
+            listOfficials();
+            String fixtureId = ask("Fixture ID: ");
+            String officialId = ask("Official ID: ");
+            league.assignOfficial(fixtureId, officialId);
+            System.out.println("Official assigned.");
+        } catch (KPFLException e) {
+            System.out.println("Cannot assign official: " + e.getMessage());
+        }
+    }
+
+    private void recordResult() {
+        try {
+            listFixtures();
+            String fixtureId = ask("Fixture ID: ");
+            Fixture fixture = league.findFixture(fixtureId);
+            int home = askInt(fixture.getHomeTeam().getName() + " goals: ");
+            int away = askInt(fixture.getAwayTeam().getName() + " goals: ");
+            league.recordResult(fixtureId, home, away);
+            System.out.println("Result recorded: " + league.findFixture(fixtureId));
+            System.out.println();
+            System.out.print(StandingsService.format(league.getStandings()));
+        } catch (KPFLException e) {
+            System.out.println("Cannot record result: " + e.getMessage());
+        } catch (NumberFormatException e) {
+            System.out.println("Cannot record result: goals must be whole numbers.");
+        }
+    }
+
+    // ---------- 4. Reports ----------
+
+    private void showStandings() {
+        try {
+            List<StandingsEntry> table = league.getStandings();
+            System.out.println();
+            System.out.println("LEAGUE STANDINGS (win 3, draw 1, loss 0)");
+            System.out.print(StandingsService.format(table));
+        } catch (KPFLException e) {
+            System.out.println("Cannot show standings: " + e.getMessage());
+        }
+    }
+
+    // ---------- Listing helpers ----------
+
+    private void listTeams() {
+        System.out.println("Teams:");
+        for (FootballTeam team : league.getTeams()) {
+            System.out.println("  " + team.getRegistrationNumber() + "  " + team.getName()
+                    + " [" + team.getStatus() + "]");
+        }
+    }
+
+    private void listStadiums() {
+        System.out.println("Stadiums:");
+        for (Stadium stadium : league.getStadiums()) {
+            System.out.println("  " + stadium.getStadiumId() + "  " + stadium.getName()
+                    + " (" + stadium.getSeatingCapacity() + " seats)");
+        }
+    }
+
+    private void listOfficials() {
+        System.out.println("Match officials:");
+        for (MatchOfficial official : league.getOfficials()) {
+            System.out.println("  " + official.getId() + "  " + official.getName()
+                    + (official.isAvailable() ? "" : " [unavailable]"));
+        }
+    }
+
+    private void listFixtures() {
+        System.out.println("Fixtures:");
+        if (league.getFixtures().isEmpty()) {
+            System.out.println("  (none yet)");
+        }
+        for (Fixture fixture : league.getFixtures()) {
+            System.out.println("  " + fixture);
+        }
+    }
+
+    // ---------- Input helpers ----------
+
+    // Asks for a line of text. At end of input it returns an empty string.
+    private String ask(String prompt) {
+        System.out.print(prompt);
+        return scanner.hasNextLine() ? scanner.nextLine().trim() : "";
+    }
+
+    // Asks for a whole number. Throws NumberFormatException if it is not one, so each action can report it.
+    private int askInt(String prompt) {
+        return Integer.parseInt(ask(prompt));
     }
 
     // ---------- Helpers ----------
