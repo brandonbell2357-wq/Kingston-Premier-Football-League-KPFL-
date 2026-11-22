@@ -1,34 +1,34 @@
-
 package ui;
 
 import java.util.Scanner;
 
-/**
- * Console menu for the KPFL system.
- * Each option currently prints a placeholder; later weeks replace
- * these with calls to the service classes.
+/*
+  Console menu for the KPFL system following the Console Menu Design
+  in the Week 1 requirements document (section 8).
+  Each option currently prints a placeholder; later weeks replace
+  these with calls to the service classes.
+  In every menu the last option goes back (or saves and exits on the main menu).
  */
 public class Menu {
 
     private final Scanner scanner = new Scanner(System.in);
 
-    /** Runs the main menu until the user chooses Save & Exit. */
+    // Runs the main menu until the user chooses Save Data & Exit. 
     public void run() {
         boolean running = true;
         while (running) {
             printMainMenu();
-            int choice = readInt("Choose an option: ", 0, 4);
+            int choice = readInt("Enter option (1-5): ", 1, 5);
             switch (choice) {
-                case 1 -> teamsAndPersonnelMenu();
-                case 2 -> fixturesAndStadiumsMenu();
-                case 3 -> ticketsAndShopMenu();
-                case 4 -> reportsAndSearchMenu();
-                case 0 -> {
+                case 1 -> teamManagementMenu();
+                case 2 -> fixturesAndMatchMenu();
+                case 3 -> ticketingAndShopMenu();
+                case 4 -> reportsMenu();
+                case 5 -> {
                     saveData();
-                    System.out.println("Goodbye.");
+                    System.out.println("Exiting KPFL Management System. Goodbye!");
                     running = false;
                 }
-                default -> System.out.println("Invalid option.");
             }
         }
     }
@@ -37,115 +37,128 @@ public class Menu {
 
     private void printMainMenu() {
         System.out.println();
-        System.out.println("===== KPFL MAIN MENU =====");
-        System.out.println("1. Teams and Personnel");
-        System.out.println("2. Fixtures and Stadiums");
-        System.out.println("3. Tickets and Shop");
-        System.out.println("4. Reports and Search");
-        System.out.println("0. Save and Exit");
+        System.out.println("-------------------------------------------------");
+        System.out.println("                    MAIN MENU                    ");
+        System.out.println("-------------------------------------------------");
+        System.out.println("1. Team & Squad Management");
+        System.out.println("2. Fixtures & Match Operations");
+        System.out.println("3. Ticketing & Stadium Shop");
+        System.out.println("4. Management Reports");
+        System.out.println("5. Save Data & Exit");
+        System.out.println("-------------------------------------------------");
     }
 
     // ---------- Submenus ----------
 
-    private void teamsAndPersonnelMenu() {
+    private void teamManagementMenu() {
         boolean back = false;
         while (!back) {
             System.out.println();
-            System.out.println("--- Teams and Personnel ---");
-            System.out.println("1. Register team");
-            System.out.println("2. Add player to team");
-            System.out.println("3. Add coach to team");
-            System.out.println("4. View all teams");
-            System.out.println("0. Back");
-            int choice = readInt("Choose an option: ", 0, 4);
+            System.out.println("--- 1. Team & Squad Management ---");
+            System.out.println("1. Register New Team");
+            System.out.println("2. Update / Approve / Suspend Team Status");
+            System.out.println("3. Search & Display Team Details");
+            System.out.println("4. Add Player / Coach to Squad");
+            System.out.println("5. Remove Player / Coach from Squad");
+            System.out.println("6. Return to Main Menu");
+            int choice = readInt("Enter option (1-6): ", 1, 6);
             switch (choice) {
-                case 1 -> notImplemented("Register team");
-                case 2 -> notImplemented("Add player");
-                case 3 -> notImplemented("Add coach");
-                case 4 -> notImplemented("View teams");
-                case 0 -> back = true;
+                case 1 -> notImplemented("1.1 Register New Team");
+                case 2 -> notImplemented("1.2 Update / Approve / Suspend Team Status");
+                case 3 -> notImplemented("1.3 Search & Display Team Details");
+                case 4 -> notImplemented("1.4 Add Player / Coach to Squad");
+                case 5 -> notImplemented("1.5 Remove Player / Coach from Squad");
+                case 6 -> back = true;
             }
         }
     }
 
-    private void fixturesAndStadiumsMenu() {
+    private void fixturesAndMatchMenu() {
         boolean back = false;
         while (!back) {
             System.out.println();
-            System.out.println("--- Fixtures and Stadiums ---");
-            System.out.println("1. Add stadium");
-            System.out.println("2. Schedule fixture");
-            System.out.println("3. Record match result");
-            System.out.println("4. View fixtures");
-            System.out.println("0. Back");
-            int choice = readInt("Choose an option: ", 0, 4);
+            System.out.println("--- 2. Fixtures & Match Operations ---");
+            System.out.println("1. Register Stadium");
+            System.out.println("2. Register Match Official");
+            System.out.println("3. Create Fixture");
+            System.out.println("4. Assign Match Official to Fixture");
+            System.out.println("5. Record Match Result & Update Standings");
+            System.out.println("6. Return to Main Menu");
+            int choice = readInt("Enter option (1-6): ", 1, 6);
             switch (choice) {
-                case 1 -> notImplemented("Add stadium");
-                case 2 -> notImplemented("Schedule fixture");
-                case 3 -> notImplemented("Record result");
-                case 4 -> notImplemented("View fixtures");
-                case 0 -> back = true;
+                case 1 -> notImplemented("2.1 Register Stadium");
+                case 2 -> notImplemented("2.2 Register Match Official");
+                case 3 -> notImplemented("2.3 Create Fixture");
+                case 4 -> notImplemented("2.4 Assign Match Official to Fixture");
+                case 5 -> notImplemented("2.5 Record Match Result & Update Standings");
+                case 6 -> back = true;
             }
         }
     }
 
-    private void ticketsAndShopMenu() {
+    private void ticketingAndShopMenu() {
         boolean back = false;
         while (!back) {
             System.out.println();
-            System.out.println("--- Tickets and Shop ---");
-            System.out.println("1. Sell ticket");
-            System.out.println("2. Sell shop item");
-            System.out.println("3. View stock");
-            System.out.println("0. Back");
-            int choice = readInt("Choose an option: ", 0, 3);
+            System.out.println("--- 3. Ticketing & Stadium Shop ---");
+            System.out.println("1. Purchase Match Tickets");
+            System.out.println("2. Add / Update Shop Products & Stock");
+            System.out.println("3. Process Shop Transaction (Subtotal, Tax, Payment, Change, Receipt)");
+            System.out.println("4. Return to Main Menu");
+            int choice = readInt("Enter option (1-4): ", 1, 4);
             switch (choice) {
-                case 1 -> notImplemented("Sell ticket");
-                case 2 -> notImplemented("Sell shop item");
-                case 3 -> notImplemented("View stock");
-                case 0 -> back = true;
+                case 1 -> notImplemented("3.1 Purchase Match Tickets");
+                case 2 -> notImplemented("3.2 Add / Update Shop Products & Stock");
+                case 3 -> notImplemented("3.3 Process Shop Transaction");
+                case 4 -> back = true;
             }
         }
     }
 
-    private void reportsAndSearchMenu() {
+    private void reportsMenu() {
         boolean back = false;
         while (!back) {
             System.out.println();
-            System.out.println("--- Reports and Search ---");
-            System.out.println("1. League standings");
-            System.out.println("2. Search player by name");
-            System.out.println("3. Sales report");
-            System.out.println("0. Back");
-            int choice = readInt("Choose an option: ", 0, 3);
+            System.out.println("--- 4. Management Reports ---");
+            System.out.println("1. View League Standings Report");
+            System.out.println("2. View Fixtures, Attendance & Ticket Revenue Report");
+            System.out.println("3. View Shop Sales & Low Stock Report");
+            System.out.println("4. Return to Main Menu");
+            int choice = readInt("Enter option (1-4): ", 1, 4);
             switch (choice) {
-                case 1 -> notImplemented("Standings");
-                case 2 -> notImplemented("Search player");
-                case 3 -> notImplemented("Sales report");
-                case 0 -> back = true;
+                case 1 -> notImplemented("4.1 League Standings Report");
+                case 2 -> notImplemented("4.2 Fixtures, Attendance & Ticket Revenue Report");
+                case 3 -> notImplemented("4.3 Shop Sales & Low Stock Report");
+                case 4 -> back = true;
             }
         }
     }
 
     // ---------- Helpers ----------
 
-    /** Placeholder for features not built yet. */
+    //Placeholder for features not built yet.
     private void notImplemented(String feature) {
         System.out.println("[" + feature + "] is not implemented yet.");
     }
 
-    /** Placeholder until the storage classes exist (Week 3). */
+    // Placeholder until the storage classes exist.
     private void saveData() {
         System.out.println("Saving data... (not implemented yet)");
     }
 
-    /**
-     * Reads a whole number between min and max (inclusive),
-     * and keeps asking until the input is valid.
+    /*
+      Reads a whole number between min and max (inclusive),
+      and keeps asking until the input is valid.
+      If the input ends, it returns max, which is always the
+      Return / Save & Exit option, so the program closes cleanly.
      */
     private int readInt(String prompt, int min, int max) {
         while (true) {
             System.out.print(prompt);
+            if (!scanner.hasNextLine()) {
+                System.out.println();
+                return max;
+            }
             String line = scanner.nextLine().trim();
             try {
                 int value = Integer.parseInt(line);

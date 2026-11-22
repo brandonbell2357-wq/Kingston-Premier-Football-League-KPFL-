@@ -2,10 +2,10 @@ package model;
 
 import exception.InvalidDataException;
 
-/** The person who runs the league and approves or suspends teams. */
+// The person who runs the league and approves or suspends teams.
 public class LeagueCommissioner extends Person {
 
-    /** Default constructor: empty text and age 0. Fill the fields with the setters. */
+    // Default constructor: ID "000", name and gender "N/A", age 0. Fill the fields with the setters.
     public LeagueCommissioner() {
         super();
     }
