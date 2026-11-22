@@ -1,5 +1,6 @@
 package service;
 
+import exception.InvalidDataException;
 import exception.NotFoundException;
 import model.Coach;
 import model.Fixture;
@@ -16,11 +17,9 @@ import java.util.List;
 public class ReportService {
 
     private final FootballLeague league;
-    private final StandingsService standingsService;
 
-    public ReportService(FootballLeague league, StandingsService standingsService) {
+    public ReportService(FootballLeague league) {
         this.league = league;
-        this.standingsService = standingsService;
     }
 
     // =========================================================================
@@ -28,17 +27,7 @@ public class ReportService {
     // =========================================================================
 
     public List<FootballTeam> searchTeams(String keyword) throws NotFoundException {
-        String query = keyword.trim().toLowerCase();
-        List<FootballTeam> matches = new ArrayList<>();
-
-        for (FootballTeam team : league.getTeams()) {
-            if (team.getRegistrationNumber().toLowerCase().contains(query)
-                    || team.getName().toLowerCase().contains(query)
-                    || team.getParish().toLowerCase().contains(query)) {
-                matches.add(team);
-            }
-        }
-
+        List<FootballTeam> matches = league.searchTeams(keyword);
         if (matches.isEmpty()) {
             throw new NotFoundException("No teams found matching: " + keyword);
         }
@@ -51,7 +40,7 @@ public class ReportService {
 
         for (FootballTeam team : league.getTeams()) {
             for (Player player : team.getPlayers()) {
-                if (player.getIdNumber().toLowerCase().contains(query)
+                if (player.getId().toLowerCase().contains(query)
                         || player.getName().toLowerCase().contains(query)
                         || player.getPosition().toLowerCase().contains(query)) {
                     matches.add(player);
@@ -70,7 +59,7 @@ public class ReportService {
         List<Stadium> matches = new ArrayList<>();
 
         for (Stadium stadium : league.getStadiums()) {
-            if (stadium.getStadiumID().toLowerCase().contains(query)
+            if (stadium.getStadiumId().toLowerCase().contains(query)
                     || stadium.getName().toLowerCase().contains(query)
                     || stadium.getLocation().toLowerCase().contains(query)) {
                 matches.add(stadium);
@@ -90,8 +79,8 @@ public class ReportService {
         for (Fixture fixture : league.getFixtures()) {
             String homeName = fixture.getHomeTeam().getName().toLowerCase();
             String awayName = fixture.getAwayTeam().getName().toLowerCase();
-            String date = fixture.getDate().toLowerCase();
-            String status = fixture.getFixtureStatus().toString().toLowerCase();
+            String date = fixture.getDate().toString().toLowerCase();
+            String status = fixture.getStatus().toString().toLowerCase();
 
             if (homeName.contains(query) || awayName.contains(query)
                     || date.contains(query) || status.contains(query)) {
@@ -109,29 +98,16 @@ public class ReportService {
     // MANAGEMENT REPORTS (3 REQUIRED REPORTS)
     // =========================================================================
 
-    // Report 1: League Standings
-    public String generateLeagueStandingsReport() {
+    // Report 1: League Standings (reuses league.getStandings() and StandingsService.format())
+    public String generateLeagueStandingsReport() throws InvalidDataException {
         String report = "=== KPFL LEAGUE STANDINGS ===\n";
-
-        List<StandingsEntry> table = standingsService.calculateStandings(
-                league.getTeams(), league.getFixtures());
+        List<StandingsEntry> table = league.getStandings();
 
         if (table.isEmpty()) {
             return report + "No standings data available yet.\n";
         }
 
-        int rank = 1;
-        for (StandingsEntry entry : table) {
-            report += rank + ". " + entry.getTeam().getName()
-                    + " | Played: " + entry.getPlayed()
-                    + " | W: " + entry.getWins()
-                    + " D: " + entry.getDraws()
-                    + " L: " + entry.getLosses()
-                    + " | GD: " + entry.getGoalDifference()
-                    + " | Pts: " + entry.getPoints() + "\n";
-            rank++;
-        }
-        return report;
+        return report + StandingsService.format(table);
     }
 
     // Report 2: Registered Teams & Roster Summary
@@ -145,8 +121,8 @@ public class ReportService {
         for (FootballTeam team : league.getTeams()) {
             report += "Team: " + team.getName()
                     + " (" + team.getParish() + ")"
-                    + " | Status: " + team.getLeagueStatus()
-                    + " | Squad Size: " + team.getPlayers().size() + "\n";
+                    + " | Status: " + team.getStatus()
+                    + " | Squad: " + team.getPlayers().size() + "/" + team.getSquadSize() + "\n";
 
             report += "  Coaches: ";
             if (team.getCoaches().isEmpty()) {
@@ -161,7 +137,7 @@ public class ReportService {
         return report;
     }
 
-    // Report 3: Stadiums & Match Schedule Summary
+    // Report 3: Stadiums, Occupancy & Match Schedule Summary
     public String generateStadiumReport() {
         String report = "=== KPFL STADIUM & SCHEDULE REPORT ===\n";
 
@@ -171,9 +147,12 @@ public class ReportService {
 
         for (Stadium stadium : league.getStadiums()) {
             int matchCount = 0;
+            int totalTicketsSold = 0;
+
             for (Fixture fixture : league.getFixtures()) {
-                if (fixture.getStadium().getStadiumID().equals(stadium.getStadiumID())) {
+                if (fixture.getStadium().getStadiumId().equals(stadium.getStadiumId())) {
                     matchCount++;
+                    totalTicketsSold += fixture.getOccupancy();
                 }
             }
 
@@ -181,7 +160,8 @@ public class ReportService {
                     + " (" + stadium.getLocation() + ")"
                     + " | Capacity: " + stadium.getSeatingCapacity()
                     + " | Condition: " + stadium.getFieldCondition()
-                    + " | Scheduled Matches: " + matchCount + "\n";
+                    + " | Matches: " + matchCount
+                    + " | Tickets Sold: " + totalTicketsSold + "\n";
         }
 
         int availableOfficials = 0;
