@@ -8,7 +8,7 @@ This repository holds the group's six-week object-oriented programming project.
 
 | Member | Role |
 | --- | --- |
-| Brandon Bell | To be assigned |
+| Brandon Bell | Project and integration lead |
 | Theo-Jean Forester | To be assigned |
 | Landan Williams | To be assigned |
 | Lamar Martin| Fixtures and Stadium Leads  |
