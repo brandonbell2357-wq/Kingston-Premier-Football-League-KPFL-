@@ -11,6 +11,7 @@ import model.Player;
 import model.Stadium;
 import model.StandingsEntry;
 import model.TeamStatus;
+import service.ReportService;
 import service.StandingsService;
 
 import java.math.BigDecimal;
@@ -25,20 +26,22 @@ import java.util.Scanner;
   in the Week 1 requirements document (section 8).
   Week 3 options (teams, squads, stadiums, officials, fixtures, results, standings) call
   the FootballLeague. Every action is wrapped in try/catch so a broken business rule
-  shows the exception's message instead of crashing. Ticketing, shop and the other
-  reports are still placeholders (Week 4).
+  shows the exception's message instead of crashing. Ticketing, shop and the shop
+  report are still placeholders (Week 4).
   In every menu the last option goes back (or saves and exits on the main menu).
  */
 public class Menu {
 
     private final Scanner scanner = new Scanner(System.in);
     private final FootballLeague league;
+    private final ReportService reportService;
 
     public Menu(FootballLeague league) {
         this.league = league;
+        this.reportService = new ReportService(league);
     }
 
-    // Runs the main menu until the user chooses Save Data & Exit. 
+    // Runs the main menu until the user chooses Save Data & Exit.
     public void run() {
         boolean running = true;
         while (running) {
@@ -83,17 +86,19 @@ public class Menu {
             System.out.println("1. Register New Team");
             System.out.println("2. Update / Approve / Suspend Team Status");
             System.out.println("3. Search & Display Team Details");
-            System.out.println("4. Add Player / Coach to Squad");
-            System.out.println("5. Remove Player / Coach from Squad");
-            System.out.println("6. Return to Main Menu");
-            int choice = readInt("Enter option (1-6): ", 1, 6);
+            System.out.println("4. Search Players (by Name, ID, or Position)");
+            System.out.println("5. Add Player / Coach to Squad");
+            System.out.println("6. Remove Player / Coach from Squad");
+            System.out.println("7. Return to Main Menu");
+            int choice = readInt("Enter option (1-7): ", 1, 7);
             switch (choice) {
                 case 1 -> registerTeam();
                 case 2 -> changeTeamStatus();
                 case 3 -> searchTeams();
-                case 4 -> addToSquad();
-                case 5 -> removeFromSquad();
-                case 6 -> back = true;
+                case 4 -> searchPlayers();
+                case 5 -> addToSquad();
+                case 6 -> removeFromSquad();
+                case 7 -> back = true;
             }
         }
     }
@@ -108,15 +113,19 @@ public class Menu {
             System.out.println("3. Create Fixture");
             System.out.println("4. Assign Match Official to Fixture");
             System.out.println("5. Record Match Result & Update Standings");
-            System.out.println("6. Return to Main Menu");
-            int choice = readInt("Enter option (1-6): ", 1, 6);
+            System.out.println("6. Search Stadiums (by Name, ID, or Location)");
+            System.out.println("7. Search Fixtures (by Team, Date, or Status)");
+            System.out.println("8. Return to Main Menu");
+            int choice = readInt("Enter option (1-8): ", 1, 8);
             switch (choice) {
                 case 1 -> registerStadium();
                 case 2 -> registerOfficial();
                 case 3 -> createFixture();
                 case 4 -> assignOfficial();
                 case 5 -> recordResult();
-                case 6 -> back = true;
+                case 6 -> searchStadiums();
+                case 7 -> searchFixtures();
+                case 8 -> back = true;
             }
         }
     }
@@ -146,19 +155,20 @@ public class Menu {
             System.out.println();
             System.out.println("--- 4. Management Reports ---");
             System.out.println("1. View League Standings Report");
-            System.out.println("2. View Fixtures, Attendance & Ticket Revenue Report");
-            System.out.println("3. View Shop Sales & Low Stock Report");
-            System.out.println("4. Return to Main Menu");
-            int choice = readInt("Enter option (1-4): ", 1, 4);
+            System.out.println("2. View Team & Roster Directory Report");
+            System.out.println("3. View Stadiums, Occupancy & Schedule Report");
+            System.out.println("4. View Shop Sales & Low Stock Report");
+            System.out.println("5. Return to Main Menu");
+            int choice = readInt("Enter option (1-5): ", 1, 5);
             switch (choice) {
                 case 1 -> showStandings();
-                case 2 -> notImplemented("4.2 Fixtures, Attendance & Ticket Revenue Report");
-                case 3 -> notImplemented("4.3 Shop Sales & Low Stock Report");
-                case 4 -> back = true;
+                case 2 -> showTeamDirectoryReport();
+                case 3 -> showStadiumReport();
+                case 4 -> notImplemented("4.4 Shop Sales & Low Stock Report");
+                case 5 -> back = true;
             }
         }
     }
-
 
     // ---------- 1. Team & Squad Management ----------
 
@@ -204,21 +214,34 @@ public class Menu {
     }
 
     private void searchTeams() {
-        String text = ask("Search by name, registration number or parish: ");
-        List<FootballTeam> found = league.searchTeams(text);
-        if (found.isEmpty()) {
-            System.out.println("No teams match \"" + text + "\".");
-            return;
+        try {
+            String text = ask("Search by name, registration number or parish: ");
+            List<FootballTeam> found = reportService.searchTeams(text);
+            for (FootballTeam team : found) {
+                System.out.println();
+                System.out.println(team);
+                for (Player player : team.getPlayers()) {
+                    System.out.println("   " + player.describe());
+                }
+                for (Coach coach : team.getCoaches()) {
+                    System.out.println("   " + coach.describe());
+                }
+            }
+        } catch (KPFLException e) {
+            System.out.println(e.getMessage());
         }
-        for (FootballTeam team : found) {
+    }
+
+    private void searchPlayers() {
+        try {
+            String text = ask("Search player by name, ID, or position: ");
+            List<Player> found = reportService.searchPlayers(text);
             System.out.println();
-            System.out.println(team);
-            for (Player player : team.getPlayers()) {
+            for (Player player : found) {
                 System.out.println("   " + player.describe());
             }
-            for (Coach coach : team.getCoaches()) {
-                System.out.println("   " + coach.describe());
-            }
+        } catch (KPFLException e) {
+            System.out.println(e.getMessage());
         }
     }
 
@@ -361,17 +384,51 @@ public class Menu {
         }
     }
 
+    private void searchStadiums() {
+        try {
+            String text = ask("Search stadium by name, ID, or location: ");
+            List<Stadium> found = reportService.searchStadiums(text);
+            System.out.println();
+            for (Stadium stadium : found) {
+                System.out.println("  " + stadium);
+            }
+        } catch (KPFLException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    private void searchFixtures() {
+        try {
+            String text = ask("Search fixture by team name, date, or status: ");
+            List<Fixture> found = reportService.searchFixtures(text);
+            System.out.println();
+            for (Fixture fixture : found) {
+                System.out.println("  " + fixture);
+            }
+        } catch (KPFLException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
     // ---------- 4. Reports ----------
 
     private void showStandings() {
         try {
-            List<StandingsEntry> table = league.getStandings();
             System.out.println();
-            System.out.println("LEAGUE STANDINGS (win 3, draw 1, loss 0)");
-            System.out.print(StandingsService.format(table));
+            System.out.print(reportService.generateLeagueStandingsReport());
         } catch (KPFLException e) {
             System.out.println("Cannot show standings: " + e.getMessage());
         }
+    }
+
+    private void showTeamDirectoryReport() {
+        System.out.println();
+        System.out.print(reportService.generateTeamDirectoryReport());
+    }
+
+    private void showStadiumReport() {
+        System.out.println();
+        System.out.print(reportService.generateStadiumReport());
     }
 
     // ---------- Listing helpers ----------
@@ -425,7 +482,7 @@ public class Menu {
 
     // ---------- Helpers ----------
 
-    //Placeholder for features not built yet.
+    // Placeholder for features not built yet.
     private void notImplemented(String feature) {
         System.out.println("[" + feature + "] is not implemented yet.");
     }
