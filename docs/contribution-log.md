@@ -126,31 +126,35 @@ Used Claude (Anthropic) to review and compile the Week 2 code to explain a few o
 
 | Member | What I did | Hours | Evidence |
 | --- | --- | --- | --- |
-| Brandon Bell | | | |
+| Brandon Bell | Created the three Week 3 business-rule exceptions (`TeamNotEligibleException`, `SchedulingConflictException`, `FixtureStateException`). Merged the fixtures work with `main`, added `FootballLeague` (lists of teams, stadiums, officials and fixtures; BR2 team clash and stadium clash checks; result recording and standings), connected the team, squad, stadium, official, fixture, result and standings menu options so each exception shows a clear message, added sample data for demonstrations, and wrote `LeagueTest` (60 checks). Reviewed, compiled and ran all three test files (171 checks). | 3 | [exceptions commit](https://github.com/brandonbell2357-wq/Kingston-Premier-Football-League-KPFL-/commit/5b13c3f), [pull request #12](https://github.com/brandonbell2357-wq/Kingston-Premier-Football-League-KPFL-/pull/12), [FootballLeague, menu and tests](https://github.com/brandonbell2357-wq/Kingston-Premier-Football-League-KPFL-/commit/0746444), [pull request #16](https://github.com/brandonbell2357-wq/Kingston-Premier-Football-League-KPFL-/pull/16), `src/model/FootballLeague.java`, `test/LeagueTest.java` |
 | Theo-Jean Forester | | | |
 | Landan Williams |Create the StandingsService(), MatchResult() & standingsEntry() classes| 3 | |
 | Lamar | | | |
 
 ### Decisions made
 
-- TBD
+- `FootballLeague` holds the lists and enforces rules that need more than one fixture (BR2 and stadium clashes); `Fixture` enforces BR1, BR3 and BR8 itself (Brandon).
+- Only an identical date and time counts as a clash; the same day at another time is allowed, as in the test plan (Brandon).
+- Standings are rebuilt from completed fixtures and are not stored (Brandon).
+- Sample data includes a pending and a suspended team so BR1 can be demonstrated from the menu (Brandon).
 
 ### Problems and how they were solved
 
-- TBD
+- The fixtures branch was behind `main`, so merging it directly would have undone later changes. `main` was merged into it first, then the code was compiled and all tests were run (Brandon).
+- Nothing held the lists of teams, fixtures and officials, so BR2 could not be checked. `FootballLeague` was added to do this (Brandon).
 
 ### Plan for next week
 
 | Member | Task |
 | --- | --- |
-| Brandon Bell | |
+| Brandon Bell | Search facilities and reports (`ReportService`) and their menu options |
 | Theo-Jean Forester | |
 | Landan Williams | |
 | Lamar | |
 
 ### AI assistance and sources
 
-- TBD
+- Brandon Bell: `FootballLeague`, the menu hookup, the sample data and `LeagueTest` were drafted with Claude (Anthropic). I reviewed the code, merged `main` into the fixtures branch, compiled the whole project, ran the tests, made my own fixes and committed it, and I can explain how each rule is enforced. The three exceptions follow the pattern of the existing exception classes.
 
 ---
 
@@ -163,31 +167,32 @@ Used Claude (Anthropic) to review and compile the Week 2 code to explain a few o
 
 | Member | What I did | Hours | Evidence |
 | --- | --- | --- | --- |
-| Brandon Bell | | | |
+| Brandon Bell | Added `ReportService` with search for teams, players, stadiums and fixtures and three reports (league standings, team directory, stadium report), and connected them to the Reports menu. Cleaned the service code (removed an unused field) and merged the work through pull request #16. | 3 | [ReportService](https://github.com/brandonbell2357-wq/Kingston-Premier-Football-League-KPFL-/commit/6a6d1f0), [service refactor](https://github.com/brandonbell2357-wq/Kingston-Premier-Football-League-KPFL-/commit/2c1ab4a), [menu search and reports](https://github.com/brandonbell2357-wq/Kingston-Premier-Football-League-KPFL-/commit/5c8d538), [pull request #16](https://github.com/brandonbell2357-wq/Kingston-Premier-Football-League-KPFL-/pull/16), `src/service/ReportService.java` |
 | Theo-Jean Forester | | | |
 | Landan Williams | | | |
 | Lamar | | | |
 
 ### Decisions made
 
-- TBD
+- Search and reports sit in a separate `ReportService` so the menu only asks for results and prints them (Brandon).
+- Reports are built from the league's data rather than stored (Brandon).
 
 ### Problems and how they were solved
 
-- TBD
+- A constructor change that skipped validation made 9 of the 68 `ModelTest` checks fail. The tests caught it, and the fix is to call the setters again so the rules apply (Brandon).
 
 ### Plan for next week
 
 | Member | Task |
 | --- | --- |
-| Brandon Bell | |
+| Brandon Bell | Integrate all modules, update the UML to match the code, final testing and the demonstration |
 | Theo-Jean Forester | |
 | Landan Williams | |
 | Lamar | |
 
 ### AI assistance and sources
 
-- TBD
+- Brandon Bell: `ReportService` and the menu changes were drafted with an AI coding assistant (GitHub Copilot in VS Code). I reviewed the code, compiled and ran the project and the tests, and edited it before committing. I can explain how each search and report works.
 
 ---
 
