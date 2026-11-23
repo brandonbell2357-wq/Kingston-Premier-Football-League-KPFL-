@@ -35,10 +35,10 @@ public class FootballTeam {
 
     public FootballTeam(String registrationNumber, String name, String parish, int squadSize)
             throws InvalidDataException {
-       this.registrationNumber = registrationNumber;
-        this.name = name;
-        this.parish = parish;
-        this.squadSize = squadSize;
+        setRegistrationNumber(registrationNumber);
+        setName(name);
+        setParish(parish);
+        setSquadSize(squadSize);
         this.status = TeamStatus.PENDING;
         this.points = 0;
     }

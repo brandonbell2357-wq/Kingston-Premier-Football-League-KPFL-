@@ -16,8 +16,8 @@ public class Coach extends Person {
     public Coach(String id, String name, int age, String gender, String qualification,
                  String coachingRole) throws InvalidDataException {
         super(id, name, age, gender);
-        this.qualification = qualification;
-        this.coachingRole = coachingRole;
+        setQualification(qualification);
+        setCoachingRole(coachingRole);
     }
 
     /** Copy constructor: copies every field of another coach. */
