@@ -1,0 +1,12 @@
+T01|T01-P1|Harbour View FC Striker|24|Male|Forward|9|Active|0
+T01|T01-P2|Harbour View FC Keeper|28|Male|Goalkeeper|1|Active|0
+T02|T02-P1|Portmore United Striker|24|Male|Forward|9|Active|0
+T02|T02-P2|Portmore United Keeper|28|Male|Goalkeeper|1|Active|0
+T03|T03-P1|Waterhouse FC Striker|24|Male|Forward|9|Active|0
+T03|T03-P2|Waterhouse FC Keeper|28|Male|Goalkeeper|1|Active|0
+T04|T04-P1|Mount Pleasant FA Striker|24|Male|Forward|9|Active|0
+T04|T04-P2|Mount Pleasant FA Keeper|28|Male|Goalkeeper|1|Active|0
+T05|T05-P1|Cavalier SC Striker|24|Male|Forward|9|Active|0
+T05|T05-P2|Cavalier SC Keeper|28|Male|Goalkeeper|1|Active|0
+T06|T06-P1|Arnett Gardens Striker|24|Male|Forward|9|Active|0
+T06|T06-P2|Arnett Gardens Keeper|28|Male|Goalkeeper|1|Active|0

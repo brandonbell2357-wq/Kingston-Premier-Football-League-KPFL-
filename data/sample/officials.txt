@@ -1,0 +1,3 @@
+O01|Daniel Brown|38|Male|Referee|Senior|true
+O02|Karen Clarke|34|Female|Referee|Senior|true
+O03|Paul Grant|41|Male|Assistant Referee|Junior|true
