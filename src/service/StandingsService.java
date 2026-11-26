@@ -26,13 +26,11 @@ public final class StandingsService {
 
     /**
      * Rebuilds the table, best team first.
-     * Every team in {@code teams} gets a row, even one with no completed matches (all zeros).
+     * Every team in gets a row, even one with no completed matches (all zeros).
      * Fixtures that are still SCHEDULED are ignored. A team that appears in a completed
-     * fixture but not in {@code teams} still gets a row, so no result is silently lost.
+     * fixture but not in still gets a row, so no result is silently lost.
      * Calling this twice with the same data gives the same table.
      *
-     * @param teams    the teams that should appear in the table
-     * @param fixtures every fixture in the league (scheduled and completed)
      */
     public static List<StandingsEntry> buildStandings(Collection<FootballTeam> teams,
                                                       Collection<Fixture> fixtures)

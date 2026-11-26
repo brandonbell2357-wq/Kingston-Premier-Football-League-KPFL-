@@ -6,7 +6,7 @@ public class Coach extends Person {
     private String qualification;
     private String coachingRole;
 
-    /** Default constructor: empty text. Fill the fields with the setters. */
+    // Default constructor: empty text. Fill the fields with the setters. 
     public Coach() {
         super();
         this.qualification = "";
@@ -16,11 +16,11 @@ public class Coach extends Person {
     public Coach(String id, String name, int age, String gender, String qualification,
                  String coachingRole) throws InvalidDataException {
         super(id, name, age, gender);
-        setQualification(qualification);
+        setQualification(qualification); // Use setters to validate input
         setCoachingRole(coachingRole);
     }
 
-    /** Copy constructor: copies every field of another coach. */
+    // Copy constructor: copies every field of another coach.
     public Coach(Coach other) {
         super(other);
         this.qualification = other.qualification;

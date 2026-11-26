@@ -1,6 +1,6 @@
 package exception;
 
-/** Thrown when a data file cannot be read or written, or its contents are damaged. */
+/// Thrown when a data file cannot be read or written, or its contents are damaged.
 public class DataFileException extends KPFLException {
     private static final long serialVersionUID = 1L;
 

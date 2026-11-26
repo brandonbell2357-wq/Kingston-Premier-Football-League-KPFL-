@@ -1,0 +1,6 @@
+dwzT01|Harbour View FC|Kingston|25|REGISTERED|0
+T02|Portmore United|St Catherine|25|REGISTERED|0
+T03|Waterhouse FC|Kingston|25|REGISTERED|0
+T04|Mount Pleasant FA|St Ann|25|REGISTERED|0
+T05|Cavalier SC|Kingston|25|PENDING|0
+T06|Arnett Gardens|Kingston|25|SUSPENDED|0

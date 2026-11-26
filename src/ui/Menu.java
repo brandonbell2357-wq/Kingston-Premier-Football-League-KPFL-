@@ -1,5 +1,6 @@
 package ui;
 
+import exception.DataFileException;
 import exception.KPFLException;
 import model.Coach;
 import model.FootballLeague;
@@ -13,6 +14,7 @@ import model.StandingsEntry;
 import model.TeamStatus;
 import service.ReportService;
 import service.StandingsService;
+import storage.LeagueFileStorage;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -35,10 +37,16 @@ public class Menu {
     private final Scanner scanner = new Scanner(System.in);
     private final FootballLeague league;
     private final ReportService reportService;
+    private final LeagueFileStorage storage;   // null means saving is not available
 
     public Menu(FootballLeague league) {
+        this(league, null);
+    }
+
+    public Menu(FootballLeague league, LeagueFileStorage storage) {
         this.league = league;
         this.reportService = new ReportService(league);
+        this.storage = storage;
     }
 
     // Runs the main menu until the user chooses Save Data & Exit.
@@ -46,16 +54,18 @@ public class Menu {
         boolean running = true;
         while (running) {
             printMainMenu();
-            int choice = readInt("Enter option (1-5): ", 1, 5);
+            int choice = readInt("Enter option (1-5): ", 1, 5); //set the minimum input to 1 and the maximum input to 5, which are the options in the main menu
             switch (choice) {
                 case 1 -> teamManagementMenu();
                 case 2 -> fixturesAndMatchMenu();
                 case 3 -> ticketingAndShopMenu();
                 case 4 -> reportsMenu();
                 case 5 -> {
-                    saveData();
-                    System.out.println("Exiting KPFL Management System. Goodbye!");
-                    running = false;
+                    // If saving fails, the user can choose to stay and try again instead of losing the data.
+                    if (saveData() || confirmExitWithoutSaving()) {
+                        System.out.println("Exiting KPFL Management System. Goodbye!");
+                        running = false;
+                    }
                 }
             }
         }
@@ -472,7 +482,10 @@ public class Menu {
     // Asks for a line of text. At end of input it returns an empty string.
     private String ask(String prompt) {
         System.out.print(prompt);
-        return scanner.hasNextLine() ? scanner.nextLine().trim() : "";
+        if (scanner.hasNextLine()) {
+            return scanner.nextLine().trim();
+        }
+        return "";
     }
 
     // Asks for a whole number. Throws NumberFormatException if it is not one, so each action can report it.
@@ -487,9 +500,26 @@ public class Menu {
         System.out.println("[" + feature + "] is not implemented yet.");
     }
 
-    // Placeholder until the storage classes exist.
-    private void saveData() {
-        System.out.println("Saving data... (not implemented yet)");
+    // Saves the league to the data folder. Returns true if the data was saved.
+    private boolean saveData() {
+        if (storage == null) {
+            System.out.println("Saving is not available in this session.");
+            return false;
+        }
+        try {
+            storage.save(league);
+            System.out.println("Data saved to " + storage.getDirectory() + ".");
+            return true;
+        } catch (DataFileException e) {
+            System.out.println("Could not save data: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean confirmExitWithoutSaving() {
+        System.out.print("The data was not saved. Exit anyway and lose this session's changes? (y/n): ");
+        String answer = scanner.hasNextLine() ? scanner.nextLine().trim() : "y";
+        return answer.equalsIgnoreCase("y");
     }
 
     /*

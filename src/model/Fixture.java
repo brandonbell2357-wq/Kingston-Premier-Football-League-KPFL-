@@ -27,12 +27,12 @@ public class Fixture {
     private LocalTime time;
     private FixtureStatus status;
     private int ticketsSold;
-    private MatchResult result; // null until the fixture is completed (BR8)
+    private MatchResult result; // null until the fixture is completed 
     private final List<MatchOfficial> officials = new ArrayList<>();
 
     
      /* Creates a SCHEDULED fixture.
-      Enforces BR1: both teams must be REGISTERED (not pending or suspended).
+     Both teams must be REGISTERED (not pending or suspended).
      */
     public Fixture(String fixtureId, FootballTeam homeTeam, FootballTeam awayTeam,
                    Stadium stadium, LocalDate date, LocalTime time)
@@ -88,7 +88,7 @@ public class Fixture {
         return team != null && (homeTeam == team || awayTeam == team);
     }
 
-    // ---------- Official assignment (BR3) ----------
+    // ---------- Official assignment  ----------
 
     /**
      * True if the other fixture is a different fixture held on the same date AND at the same time.
@@ -99,7 +99,7 @@ public class Fixture {
                 && date.equals(other.date) && time.equals(other.time);
     }
 
-    /** True if this official is already assigned to this fixture. */
+    //True if this official is already assigned to this fixture. */
     public boolean hasOfficial(MatchOfficial official) {
         if (official == null) {
             return false;
@@ -115,9 +115,6 @@ public class Fixture {
     /**
      * Assigns a match official to this fixture. Every check runs first, so a refused
      * assignment changes nothing.
-     *
-     * @param official      the official to assign
-     * @param otherFixtures all other fixtures in the league, used to check BR3
      */
     public void assignOfficial(MatchOfficial official, Collection<Fixture> otherFixtures)
             throws InvalidDataException, DuplicateEntryException,
@@ -166,9 +163,6 @@ public class Fixture {
      * COMPLETED (there is deliberately no setStatus), so a fixture can never be
      * completed without a valid result (BR8). Every check runs first, so a refused
      * call changes nothing.
-     *
-     * @param matchResult the final score; it must not be null
-     * @throws FixtureStateException if there is no result, or the fixture is already completed
      */
     public void complete(MatchResult matchResult) throws FixtureStateException {
         if (matchResult == null) {
@@ -198,7 +192,10 @@ public class Fixture {
         if (result == null || result.isDraw()) {
             return null;
         }
-        return result.isHomeWin() ? homeTeam : awayTeam;
+        if (result.isHomeWin()) {
+            return homeTeam;
+        }
+        return awayTeam;
     }
 
     public String getFixtureId() {
@@ -286,4 +283,3 @@ public class Fixture {
                 + ticketsSold + "/" + stadium.getSeatingCapacity() + " seats taken)";
     }
 }
-

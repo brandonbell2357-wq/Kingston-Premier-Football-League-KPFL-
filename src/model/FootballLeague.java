@@ -24,10 +24,10 @@ import java.util.List;
     - Standings are never stored; they are rebuilt from completed fixtures by StandingsService.
 
   Rules enforced here:
-    BR1  only registered teams in a fixture      (checked by the Fixture constructor)
-    BR2  a team cannot play two fixtures at the same date and time
-    BR3  an official cannot be in two fixtures at the same date and time
-    BR8  a fixture is completed only with a valid result
+      Only registered teams in a fixture      (checked by the Fixture constructor)
+      A team cannot play two fixtures at the same date and time
+      An official cannot be in two fixtures at the same date and time
+      A fixture is completed only with a valid result
   A stadium also cannot host two fixtures at the same date and time.
  */
 public class FootballLeague {
@@ -142,10 +142,7 @@ public class FootballLeague {
 
     /**
      * Creates a fixture after checking every rule. If any check fails nothing is added.
-     *
-     * @throws TeamNotEligibleException     BR1: a team is pending or suspended
-     * @throws SchedulingConflictException  BR2: a team is already playing at that date and time,
-     *                                      or the stadium is already booked
+    
      */
     public Fixture scheduleFixture(String fixtureId, String homeRegNo, String awayRegNo, String stadiumId,
                                    LocalDate date, LocalTime time)

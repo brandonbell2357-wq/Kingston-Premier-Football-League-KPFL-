@@ -371,7 +371,7 @@ public class LeagueFileStorage {
     }
 
     static String unescape(String text) {
-        StringBuilder sb = new StringBuilder();
+        StringBuilder sb = new StringBuilder(); //String builder was used because Strings are immutable and StringBuilder is mutable and more efficient for concatenation
         for (int i = 0; i < text.length(); i++) {
             char ch = text.charAt(i);
             if (ch == '\\' && i + 1 < text.length()) {
