@@ -154,7 +154,3 @@ public class StadiumShop {
         return Collections.unmodifiableList(sales);
     }
 } 
-   
-        return Collections.unmodifiableList(sales);
-    }
-}
