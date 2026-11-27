@@ -295,6 +295,27 @@ public class Fixture {
         return Collections.unmodifiableList(sold);
     }
 
+    /**
+     * Puts back a ticket that was sold earlier, when saved data is loaded. Unlike sellTickets,
+     * it also works for a fixture that has since been played, but the ticket is still checked:
+     * no duplicate ticket ID, and never more tickets than the stadium's capacity (BR4).
+     */
+    public Ticket restoreTicket(String ticketId, Spectator spectator, TicketCategory category, BigDecimal price)
+            throws InvalidDataException, DuplicateEntryException, StadiumCapacityExceededException {
+        for (Ticket existing : tickets) {
+            if (existing.getTicketId().equalsIgnoreCase(ticketId == null ? "" : ticketId.trim())) {
+                throw new DuplicateEntryException("Ticket " + ticketId + " already exists for " + fixtureId + ".");
+            }
+        }
+        if (!stadium.checkCapacity(getOccupancy() + 1)) {
+            throw new StadiumCapacityExceededException("Ticket " + ticketId + " would put " + fixtureId
+                    + " over the capacity of " + stadium.getSeatingCapacity() + ".");
+        }
+        Ticket ticket = new Ticket(ticketId, this, spectator, category, price);
+        tickets.add(ticket);
+        return ticket;
+    }
+
     /** Ticket IDs are the fixture ID plus a running number, e.g. FX01-T0001. */
     private String nextTicketId(int number) {
         return String.format("%s-T%04d", fixtureId, number);
