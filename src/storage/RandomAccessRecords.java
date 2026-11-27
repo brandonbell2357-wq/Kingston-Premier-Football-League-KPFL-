@@ -1,313 +1,267 @@
-import exception.*;
-import model.*;
-import service.SampleData;
-import storage.LeagueFileStorage;
-import storage.RandomAccessRecords;
+package storage;
 
+import exception.DataFileException;
+import exception.InvalidDataException;
+import model.FoodItem;
+import model.Merchandise;
+import model.Product;
+import model.Ticket;
+
+import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 
 /*
-  Tests for the Week 4 persistence: spectators (sequential), products and tickets (random access,
-  fixed-length records), and the league's spectator and ticket methods.
-  Every test uses a fresh temporary folder, so no real data is touched.
-  Same style as ModelTest: run with "java -cp out RandomAccessTest".
+  Reads and writes the shop's products and the sold tickets as RANDOM ACCESS files, as planned
+  in the Week 1 design (section 5): every record has the same fixed length, so record number n
+  starts at byte n x RECORD_SIZE and can be read directly with seek(), without reading the
+  records before it.
+
+  Text fields are written as a fixed number of characters (writeChars, 2 bytes each), padded with
+  spaces. Money is stored as a whole number of cents (a long), so no rounding can creep in.
+  Text that is too long for its field is refused (DataFileException) instead of being cut short.
+
+  products.dat, one record = 175 bytes:
+    type        char       2   'M' = Merchandise, 'F' = FoodItem
+    productId   10 chars  20
+    name        30 chars  60
+    priceCents  long       8
+    stock       int        4
+    teamName    30 chars  60   Merchandise only (spaces for food)
+    size        10 chars  20   Merchandise only (spaces for food)
+    beverage    boolean    1   FoodItem only (false for merchandise)
+
+  tickets.dat, one record = 128 bytes:
+    ticketId    20 chars  40
+    fixtureId   15 chars  30
+    spectatorId 15 chars  30
+    category    10 chars  20
+    priceCents  long       8
  */
-public class RandomAccessTest {
+public final class RandomAccessRecords {
 
-    private static int passed = 0;
-    private static int failed = 0;
+    public static final int ID_CHARS = 10;
+    public static final int NAME_CHARS = 30;
+    public static final int TEAM_CHARS = 30;
+    public static final int SIZE_CHARS = 10;
+    public static final int PRODUCT_RECORD_SIZE = 2 + 2 * ID_CHARS + 2 * NAME_CHARS + 8 + 4
+            + 2 * TEAM_CHARS + 2 * SIZE_CHARS + 1;   // 175 bytes
 
-    private interface Action {
-        void run() throws Exception;
+    public static final int TICKET_ID_CHARS = 20;
+    public static final int FIXTURE_ID_CHARS = 15;
+    public static final int SPECTATOR_ID_CHARS = 15;
+    public static final int CATEGORY_CHARS = 10;
+    public static final int TICKET_RECORD_SIZE = 2 * TICKET_ID_CHARS + 2 * FIXTURE_ID_CHARS
+            + 2 * SPECTATOR_ID_CHARS + 2 * CATEGORY_CHARS + 8;   // 128 bytes
+
+    /** One ticket record as read from tickets.dat; the storage class turns it back into a Ticket. */
+    public record TicketRow(String ticketId, String fixtureId, String spectatorId, String category,
+                            BigDecimal price) {
     }
 
-    private static void check(String name, boolean ok) {
-        if (ok) {
-            passed++;
-        } else {
-            failed++;
-            System.out.println("FAIL: " + name);
-        }
+    private RandomAccessRecords() {
+        // only static methods
     }
 
-    /** Passes only if the action throws the expected exception type (or a subclass). */
-    private static void expect(String name, Class<? extends Exception> type, Action action) {
-        try {
-            action.run();
-            failed++;
-            System.out.println("FAIL: " + name + " (no exception thrown)");
-        } catch (Exception e) {
-            if (type.isInstance(e)) {
-                passed++;
-            } else {
-                failed++;
-                System.out.println("FAIL: " + name + " (threw " + e.getClass().getSimpleName() + ")");
+    // =====================================================================
+    // Products
+    // =====================================================================
+
+    /** Writes every product, one fixed-length record each, replacing anything already in the file. */
+    public static void writeProducts(Path file, List<Product> products) throws DataFileException {
+        try (RandomAccessFile raf = new RandomAccessFile(file.toFile(), "rw")) {
+            raf.setLength(0);
+            for (int i = 0; i < products.size(); i++) {
+                Product p = products.get(i);
+                raf.seek((long) i * PRODUCT_RECORD_SIZE);
+                if (p instanceof Merchandise m) {
+                    raf.writeChar('M');
+                    writeFixed(raf, "productId", p.getProductId(), ID_CHARS);
+                    writeFixed(raf, "product name", p.getName(), NAME_CHARS);
+                    raf.writeLong(toCents(p.getPrice()));
+                    raf.writeInt(p.getStockQuantity());
+                    writeFixed(raf, "team name", m.getTeamName(), TEAM_CHARS);
+                    writeFixed(raf, "size", m.getSize(), SIZE_CHARS);
+                    raf.writeBoolean(false);
+                } else if (p instanceof FoodItem f) {
+                    raf.writeChar('F');
+                    writeFixed(raf, "productId", p.getProductId(), ID_CHARS);
+                    writeFixed(raf, "product name", p.getName(), NAME_CHARS);
+                    raf.writeLong(toCents(p.getPrice()));
+                    raf.writeInt(p.getStockQuantity());
+                    writeFixed(raf, "team name", "", TEAM_CHARS);
+                    writeFixed(raf, "size", "", SIZE_CHARS);
+                    raf.writeBoolean(f.isBeverage());
+                } else {
+                    throw new DataFileException("Unknown kind of product: " + p.getClass().getSimpleName());
+                }
             }
+        } catch (IOException e) {
+            throw new DataFileException("Could not write " + file.getFileName() + ": " + e.getMessage(), e);
         }
     }
 
-    private static final LocalDate D1 = LocalDate.of(2026, 12, 5);
-    private static final LocalTime T1 = LocalTime.of(15, 0);
-
-    private static Path tempFolder() throws Exception {
-        return Files.createTempDirectory("kpfl-ra-test");
+    /** Reads every product record in order. A missing file means there are no products yet. */
+    public static List<Product> readProducts(Path file) throws DataFileException {
+        List<Product> products = new ArrayList<>();
+        if (!Files.exists(file)) {
+            return products;
+        }
+        try (RandomAccessFile raf = new RandomAccessFile(file.toFile(), "r")) {
+            long count = recordCount(raf, PRODUCT_RECORD_SIZE, file);
+            for (int i = 0; i < count; i++) {
+                products.add(readProductAt(raf, i, file));
+            }
+        } catch (IOException e) {
+            throw new DataFileException("Could not read " + file.getFileName() + ": " + e.getMessage(), e);
+        }
+        return products;
     }
 
-    private static boolean money(BigDecimal actual, String expected) {
-        return actual != null && actual.compareTo(new BigDecimal(expected)) == 0;
-    }
-
-    // Sample league with one fixture (F1 at the National Stadium) and some tickets sold.
-    private static FootballLeague leagueWithTickets() throws Exception {
-        FootballLeague league = SampleData.createLeague();
-        league.scheduleFixture("F1", "T01", "T02", "S01", D1, T1);
-        league.sellTickets("F1", "SP01", TicketCategory.GENERAL, 2);
-        league.sellTickets("F1", "SP02", TicketCategory.VIP, 1);
-        return league;
-    }
-
-    public static void main(String[] args) throws Exception {
-        leagueMethods();
-        roundTrip();
-        randomAccessRecords();
-        savingRules();
-        damagedAndInvalidData();
-        olderSaves();
-
-        System.out.println("Passed: " + passed + "   Failed: " + failed);
-        if (failed > 0) {
-            System.exit(1);
+    /**
+     * Reads ONE product directly by its record number (0 = the first record), using seek().
+     * This is the point of a random access file: no earlier record is read.
+     */
+    public static Product readProduct(Path file, int recordNumber) throws DataFileException {
+        try (RandomAccessFile raf = new RandomAccessFile(file.toFile(), "r")) {
+            long count = recordCount(raf, PRODUCT_RECORD_SIZE, file);
+            if (recordNumber < 0 || recordNumber >= count) {
+                throw new DataFileException(file.getFileName() + " has no record number " + recordNumber
+                        + " (it holds " + count + " records).");
+            }
+            return readProductAt(raf, recordNumber, file);
+        } catch (IOException e) {
+            throw new DataFileException("Could not read " + file.getFileName() + ": " + e.getMessage(), e);
         }
     }
 
-    // ---------- Spectators and ticket sales through the league ----------
-    private static void leagueMethods() throws Exception {
-        FootballLeague league = SampleData.createLeague();
-        check("sample data has 3 spectators and 7 products",
-                league.getSpectators().size() == 3 && league.getShop().getProducts().size() == 7);
-        expect("duplicate spectator ID", DuplicateEntryException.class,
-                () -> league.addSpectator(new Spectator("sp01", "Someone", 30, "Male")));
-        expect("null spectator", InvalidDataException.class, () -> league.addSpectator(null));
-        expect("find a spectator who does not exist", NotFoundException.class, () -> league.findSpectator("SP99"));
-
-        league.scheduleFixture("F1", "T01", "T02", "S02", D1, T1);
-        List<Ticket> sold = league.sellTickets("F1", "SP01", TicketCategory.GRANDSTAND, 2);
-        check("league sells tickets: 2 grandstand at 1000.00 x 1.5 = 1500.00 each",
-                sold.size() == 2 && money(sold.get(0).getPrice(), "1500.00"));
-        expect("tickets for a fixture that does not exist", NotFoundException.class,
-                () -> league.sellTickets("F9", "SP01", TicketCategory.GENERAL, 1));
-        expect("tickets for a spectator who does not exist", NotFoundException.class,
-                () -> league.sellTickets("F1", "SP99", TicketCategory.GENERAL, 1));
-        expect("BR4 through the league: more than the 7000 seats", StadiumCapacityExceededException.class,
-                () -> league.sellTickets("F1", "SP02", TicketCategory.GENERAL, 6999));
-        check("sold count unchanged after refusal", league.findFixture("F1").getOccupancy() == 2);
-        check("low-stock products in the sample data (flag at 5, chicken box at 20)",
-                league.getShop().getLowStockProducts().size() == 2);
+    private static Product readProductAt(RandomAccessFile raf, int recordNumber, Path file)
+            throws IOException, DataFileException {
+        raf.seek((long) recordNumber * PRODUCT_RECORD_SIZE);
+        char type = raf.readChar();
+        String id = readFixed(raf, ID_CHARS);
+        String name = readFixed(raf, NAME_CHARS);
+        BigDecimal price = fromCents(raf.readLong());
+        int stock = raf.readInt();
+        String team = readFixed(raf, TEAM_CHARS);
+        String size = readFixed(raf, SIZE_CHARS);
+        boolean beverage = raf.readBoolean();
+        try {
+            if (type == 'M') {
+                return new Merchandise(id, name, price, stock, size, team);
+            }
+            if (type == 'F') {
+                return new FoodItem(id, name, price, stock, beverage);
+            }
+        } catch (InvalidDataException e) {
+            throw new DataFileException(file.getFileName() + " record " + recordNumber + " is invalid: "
+                    + e.getMessage(), e);
+        }
+        throw new DataFileException(file.getFileName() + " record " + recordNumber
+                + " has an unknown product type '" + type + "'.");
     }
 
-    // ---------- Save, then load: everything comes back ----------
-    private static void roundTrip() throws Exception {
-        Path folder = tempFolder();
-        LeagueFileStorage storage = new LeagueFileStorage(folder);
-        FootballLeague original = leagueWithTickets();
-        original.getShop().restock("F01", 5);          // stock 80 -> 85
-        storage.save(original);
-        check("products.dat, tickets.dat and spectators.txt are written",
-                Files.exists(folder.resolve("products.dat")) && Files.exists(folder.resolve("tickets.dat"))
-                        && Files.exists(folder.resolve("spectators.txt")));
+    // =====================================================================
+    // Tickets
+    // =====================================================================
 
-        FootballLeague loaded = storage.load();
-        check("spectators come back", loaded.getSpectators().size() == 3
-                && loaded.findSpectator("SP03").getName().equals("Shanice Williams"));
-
-        List<Product> products = loaded.getShop().getProducts();
-        check("all 7 products come back, in order", products.size() == 7
-                && products.get(0).getProductId().equals("M01") && products.get(6).getProductId().equals("F04"));
-        Product jersey = loaded.getShop().findProduct("M01");
-        check("merchandise keeps its type, size and team", jersey instanceof Merchandise m
-                && m.getSize().equals("L") && m.getTeamName().equals("Harbour View FC"));
-        check("prices are exact after the round trip (4500.00)", money(jersey.getPrice(), "4500.00"));
-        check("stock changes are saved (patty 85)", loaded.getShop().findProduct("F01").getStockQuantity() == 85);
-        check("a beverage stays a beverage", loaded.getShop().findProduct("F03") instanceof FoodItem f && f.isBeverage());
-        check("food stays food", loaded.getShop().findProduct("F01") instanceof FoodItem f && !f.isBeverage());
-
-        Fixture f1 = loaded.findFixture("F1");
-        check("tickets come back on their fixture", f1.getOccupancy() == 3);
-        check("ticket details come back", f1.getTickets().get(2).getCategory() == TicketCategory.VIP
-                && f1.getTickets().get(2).getSpectator().getId().equals("SP02")
-                && f1.getTickets().get(0).getTicketId().equals("F1-T0001"));
-        check("ticket revenue is exact: 2 x 1500 + 3750 = 6750.00", money(f1.getTicketRevenue(), "6750.00"));
-        check("loaded tickets point to the loaded spectator objects",
-                f1.getTickets().get(0).getSpectator() == loaded.findSpectator("SP01"));
-
-        List<Ticket> more = loaded.sellTickets("F1", "SP03", TicketCategory.GENERAL, 1);
-        check("ticket numbering continues after loading", more.get(0).getTicketId().equals("F1-T0004"));
-
-        // A ticket keeps the price it was sold at, even if the stadium price changes later.
-        FootballLeague changed = leagueWithTickets();
-        changed.findStadium("S01").setTicketPrice(new BigDecimal("9999.00"));
-        Path f2 = tempFolder();
-        new LeagueFileStorage(f2).save(changed);
-        check("old tickets keep their sale price after reload",
-                money(new LeagueFileStorage(f2).load().findFixture("F1").getTickets().get(0).getPrice(), "1500.00"));
-
-        // Tickets for a fixture that has since been played still load.
-        FootballLeague played = leagueWithTickets();
-        played.recordResult("F1", 2, 1);
-        Path f3 = tempFolder();
-        new LeagueFileStorage(f3).save(played);
-        FootballLeague playedLoaded = new LeagueFileStorage(f3).load();
-        check("tickets of a completed fixture load", playedLoaded.findFixture("F1").getOccupancy() == 3
-                && playedLoaded.findFixture("F1").isCompleted());
-    }
-
-    // ---------- The random access files themselves ----------
-    private static void randomAccessRecords() throws Exception {
-        Path folder = tempFolder();
-        new LeagueFileStorage(folder).save(leagueWithTickets());
-        Path products = folder.resolve("products.dat");
-        Path tickets = folder.resolve("tickets.dat");
-
-        check("record sizes are 175 and 128 bytes", RandomAccessRecords.PRODUCT_RECORD_SIZE == 175
-                && RandomAccessRecords.TICKET_RECORD_SIZE == 128);
-        check("products.dat holds exactly 7 fixed-length records", Files.size(products) == 7L * 175);
-        check("tickets.dat holds exactly 3 fixed-length records", Files.size(tickets) == 3L * 128);
-
-        Product fifth = RandomAccessRecords.readProduct(products, 4);
-        check("direct read of record 4 with seek() gives the 5th product (Jerk Chicken Box)",
-                fifth.getProductId().equals("F02") && fifth.getName().equals("Jerk Chicken Box"));
-        check("direct read of record 0 gives the first product", RandomAccessRecords.readProduct(products, 0)
-                .getProductId().equals("M01"));
-        expect("record number past the end", DataFileException.class, () -> RandomAccessRecords.readProduct(products, 7));
-        expect("negative record number", DataFileException.class, () -> RandomAccessRecords.readProduct(products, -1));
-
-        // Price is stored as whole cents: the long at byte 82 of record 0 is 450000 (4500.00).
-        try (RandomAccessFile raf = new RandomAccessFile(products.toFile(), "r")) {
-            raf.seek(2 + 20 + 60);
-            check("price is stored as whole cents (450000 = $4,500.00)", raf.readLong() == 450000L);
+    /** Writes every ticket, one fixed-length record each, replacing anything already in the file. */
+    public static void writeTickets(Path file, List<Ticket> tickets) throws DataFileException {
+        try (RandomAccessFile raf = new RandomAccessFile(file.toFile(), "rw")) {
+            raf.setLength(0);
+            for (int i = 0; i < tickets.size(); i++) {
+                Ticket t = tickets.get(i);
+                raf.seek((long) i * TICKET_RECORD_SIZE);
+                writeFixed(raf, "ticket ID", t.getTicketId(), TICKET_ID_CHARS);
+                writeFixed(raf, "fixture ID", t.getFixture().getFixtureId(), FIXTURE_ID_CHARS);
+                writeFixed(raf, "spectator ID", t.getSpectator().getId(), SPECTATOR_ID_CHARS);
+                writeFixed(raf, "category", t.getCategory().name(), CATEGORY_CHARS);
+                raf.writeLong(toCents(t.getPrice()));
+            }
+        } catch (IOException e) {
+            throw new DataFileException("Could not write " + file.getFileName() + ": " + e.getMessage(), e);
         }
     }
 
-    // ---------- Saving rules ----------
-    private static void savingRules() throws Exception {
-        Path folder = tempFolder();
-        LeagueFileStorage storage = new LeagueFileStorage(folder);
-        storage.save(leagueWithTickets());
-        long goodSize = Files.size(folder.resolve("products.dat"));
-
-        FootballLeague tooLong = leagueWithTickets();
-        tooLong.getShop().addProduct(new FoodItem("F99", "A product name that is far too long to fit",
-                new BigDecimal("100.00"), 5, false));
-        expect("a name longer than 30 characters is refused", DataFileException.class, () -> storage.save(tooLong));
-        check("a refused save leaves the old files untouched", Files.size(folder.resolve("products.dat")) == goodSize
-                && storage.load().getShop().getProducts().size() == 7);
-        boolean leftovers;
-        try (var files = Files.list(folder)) {
-            leftovers = files.anyMatch(p -> p.getFileName().toString().endsWith(".tmp"));
+    /** Reads every ticket record in order. A missing file means no tickets have been sold yet. */
+    public static List<TicketRow> readTickets(Path file) throws DataFileException {
+        List<TicketRow> rows = new ArrayList<>();
+        if (!Files.exists(file)) {
+            return rows;
         }
-        check("a refused save leaves no temporary files", !leftovers);
-
-        FootballLeague oddPrice = leagueWithTickets();
-        oddPrice.getShop().addProduct(new FoodItem("F98", "Odd Price", new BigDecimal("1.005"), 5, false));
-        expect("a price with more than 2 decimal places is refused", DataFileException.class, () -> storage.save(oddPrice));
-
-        FootballLeague exact = leagueWithTickets();
-        exact.getShop().addProduct(new FoodItem("ABCDEFGHIJ", "Exactly thirty characters long",
-                new BigDecimal("1.00"), 1, false));
-        Path f2 = tempFolder();
-        new LeagueFileStorage(f2).save(exact);
-        check("boundary: a 10-character ID and a 30-character name fit exactly",
-                new LeagueFileStorage(f2).load().getShop().findProduct("ABCDEFGHIJ").getName()
-                        .equals("Exactly thirty characters long"));
+        try (RandomAccessFile raf = new RandomAccessFile(file.toFile(), "r")) {
+            long count = recordCount(raf, TICKET_RECORD_SIZE, file);
+            for (int i = 0; i < count; i++) {
+                raf.seek((long) i * TICKET_RECORD_SIZE);
+                rows.add(new TicketRow(readFixed(raf, TICKET_ID_CHARS), readFixed(raf, FIXTURE_ID_CHARS),
+                        readFixed(raf, SPECTATOR_ID_CHARS), readFixed(raf, CATEGORY_CHARS),
+                        fromCents(raf.readLong())));
+            }
+        } catch (IOException e) {
+            throw new DataFileException("Could not read " + file.getFileName() + ": " + e.getMessage(), e);
+        }
+        return rows;
     }
 
-    // ---------- Damaged or rule-breaking data is reported ----------
-    private static void damagedAndInvalidData() throws Exception {
-        Path f1 = tempFolder();
-        new LeagueFileStorage(f1).save(leagueWithTickets());
-        try (RandomAccessFile raf = new RandomAccessFile(f1.resolve("products.dat").toFile(), "rw")) {
-            raf.setLength(raf.length() - 1);
-        }
-        expect("a products.dat that is not a whole number of records", DataFileException.class,
-                () -> new LeagueFileStorage(f1).load());
+    // =====================================================================
+    // Helpers
+    // =====================================================================
 
-        Path f2 = tempFolder();
-        new LeagueFileStorage(f2).save(leagueWithTickets());
-        try (RandomAccessFile raf = new RandomAccessFile(f2.resolve("products.dat").toFile(), "rw")) {
-            raf.seek(0);
-            raf.writeChar('X');
+    /** Number of records in the file. A length that is not a whole number of records means damage. */
+    private static long recordCount(RandomAccessFile raf, int recordSize, Path file)
+            throws IOException, DataFileException {
+        long length = raf.length();
+        if (length % recordSize != 0) {
+            throw new DataFileException(file.getFileName() + " is damaged: its size (" + length
+                    + " bytes) is not a whole number of " + recordSize + "-byte records.");
         }
-        expect("an unknown product type", DataFileException.class, () -> new LeagueFileStorage(f2).load());
-
-        Path f3 = tempFolder();
-        new LeagueFileStorage(f3).save(leagueWithTickets());
-        try (RandomAccessFile raf = new RandomAccessFile(f3.resolve("products.dat").toFile(), "rw")) {
-            raf.seek(2 + 20 + 60 + 8);
-            raf.writeInt(-4);
-        }
-        expect("a negative stock in the file", DataFileException.class, () -> new LeagueFileStorage(f3).load());
-
-        Path f4 = tempFolder();
-        new LeagueFileStorage(f4).save(leagueWithTickets());
-        Files.write(f4.resolve("spectators.txt"), List.of("SP01|Alicia Brown|30|Female", "SP03|Shanice Williams|41|Female"));
-        expect("a ticket for a spectator who is no longer saved", DataFileException.class,
-                () -> new LeagueFileStorage(f4).load());
-
-        Path f5 = tempFolder();
-        new LeagueFileStorage(f5).save(leagueWithTickets());
-        try (RandomAccessFile raf = new RandomAccessFile(f5.resolve("tickets.dat").toFile(), "rw")) {
-            raf.seek(40 + 30 + 30);
-            raf.writeChars("BALCONY   ");
-        }
-        expect("an unknown ticket category", DataFileException.class, () -> new LeagueFileStorage(f5).load());
-
-        // BR4 is checked again on load: tickets.dat claims more tickets than the stadium has seats.
-        FootballLeague tiny = SampleData.createLeague();
-        tiny.addStadium(new Stadium("S09", "Tiny Ground", "Kingston", 2, "Fair", new BigDecimal("500.00")));
-        tiny.scheduleFixture("F1", "T01", "T02", "S09", D1, T1);
-        tiny.sellTickets("F1", "SP01", TicketCategory.GENERAL, 2);
-        Path f6 = tempFolder();
-        new LeagueFileStorage(f6).save(leagueWithTickets());   // 35,000 seats, so only the duplicate is wrong
-        byte[] one = new byte[128];
-        try (RandomAccessFile raf = new RandomAccessFile(f6.resolve("tickets.dat").toFile(), "rw")) {
-            raf.seek(0);
-            raf.readFully(one);
-            raf.seek(raf.length());
-            raf.write(one);            // a third copy of ticket 1, same ID
-        }
-        expect("a duplicate ticket ID on load", DataFileException.class, () -> new LeagueFileStorage(f6).load());
-
-        Path f7 = tempFolder();
-        new LeagueFileStorage(f7).save(tiny);
-        try (RandomAccessFile raf = new RandomAccessFile(f7.resolve("tickets.dat").toFile(), "rw")) {
-            raf.seek(0);
-            raf.readFully(one);
-            long third = raf.length();
-            raf.seek(third);
-            raf.write(one);
-            raf.seek(third);
-            raf.writeChars("F1-T0003            ");   // a new ID, so only the capacity rule is broken
-        }
-        expect("BR4 on load: a third ticket for a 2-seat stadium", DataFileException.class,
-                () -> new LeagueFileStorage(f7).load());
+        return length / recordSize;
     }
 
-    // ---------- A folder saved before Week 4 still loads ----------
-    private static void olderSaves() throws Exception {
-        Path folder = tempFolder();
-        new LeagueFileStorage(folder).save(SampleData.createLeague());
-        Files.delete(folder.resolve("spectators.txt"));
-        Files.delete(folder.resolve("products.dat"));
-        Files.delete(folder.resolve("tickets.dat"));
-        FootballLeague loaded = new LeagueFileStorage(folder).load();
-        check("an older save without the Week 4 files loads with no spectators, products or tickets",
-                loaded.getSpectators().isEmpty() && loaded.getShop().getProducts().isEmpty()
-                        && loaded.getTeams().size() == 6);
+    /** Writes text as exactly "chars" characters, padded with spaces. Too long is refused. */
+    private static void writeFixed(RandomAccessFile raf, String field, String text, int chars)
+            throws IOException, DataFileException {
+        String value = text == null ? "" : text;
+        if (value.length() > chars) {
+            throw new DataFileException("The " + field + " \"" + value + "\" is too long to save: the most is "
+                    + chars + " characters.");
+        }
+        StringBuilder padded = new StringBuilder(value);
+        while (padded.length() < chars) {
+            padded.append(' ');
+        }
+        raf.writeChars(padded.toString());
+    }
+
+    /** Reads exactly "chars" characters and removes the padding spaces at the end. */
+    private static String readFixed(RandomAccessFile raf, int chars) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < chars; i++) {
+            sb.append(raf.readChar());
+        }
+        int end = sb.length();
+        while (end > 0 && sb.charAt(end - 1) == ' ') {
+            end--;
+        }
+        return sb.substring(0, end);
+    }
+
+    /** $1,500.00 -> 150000 cents. A price with more than 2 decimal places is refused. */
+    private static long toCents(BigDecimal price) throws DataFileException {
+        try {
+            return price.setScale(2, RoundingMode.UNNECESSARY).movePointRight(2).longValueExact();
+        } catch (ArithmeticException e) {
+            throw new DataFileException("The price " + price.toPlainString()
+                    + " cannot be saved: prices must have at most 2 decimal places.", e);
+        }
+    }
+
+    private static BigDecimal fromCents(long cents) {
+        return BigDecimal.valueOf(cents, 2);
     }
 }
