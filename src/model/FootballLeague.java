@@ -5,6 +5,7 @@ import exception.FixtureStateException;
 import exception.InvalidDataException;
 import exception.NotFoundException;
 import exception.SchedulingConflictException;
+import exception.StadiumCapacityExceededException;
 import exception.TeamNotEligibleException;
 import service.StandingsService;
 
@@ -29,6 +30,9 @@ import java.util.List;
       An official cannot be in two fixtures at the same date and time
       A fixture is completed only with a valid result
   A stadium also cannot host two fixtures at the same date and time.
+
+  Week 4: the league also keeps the spectators and its stadium shop, and sells tickets
+  for its fixtures (BR4 and BR5 are checked by Fixture.sellTickets).
  */
 public class FootballLeague {
 
@@ -38,6 +42,19 @@ public class FootballLeague {
     private final List<Stadium> stadiums = new ArrayList<>();
     private final List<MatchOfficial> officials = new ArrayList<>();
     private final List<Fixture> fixtures = new ArrayList<>();
+    private final List<Spectator> spectators = new ArrayList<>();
+    private final StadiumShop shop = createShop();
+
+    /** Name of the league's stadium shop. */
+    public static final String SHOP_NAME = "KPFL Stadium Shop";
+
+    private static StadiumShop createShop() {
+        try {
+            return new StadiumShop(SHOP_NAME);
+        } catch (InvalidDataException e) {
+            throw new IllegalStateException("The shop name constant is invalid.", e);
+        }
+    }
 
     public FootballLeague() {
         this.name = "";
@@ -86,6 +103,19 @@ public class FootballLeague {
         officials.add(official);
     }
 
+    // Registers a spectator so they can buy tickets and shop products. IDs must be unique. 
+    public void addSpectator(Spectator spectator) throws InvalidDataException, DuplicateEntryException {
+        if (spectator == null) {
+            throw new InvalidDataException("Spectator cannot be null.");
+        }
+        for (Spectator existing : spectators) {
+            if (existing.getId().equalsIgnoreCase(spectator.getId())) {
+                throw new DuplicateEntryException("A spectator with ID " + spectator.getId() + " already exists.");
+            }
+        }
+        spectators.add(spectator);
+    }
+
     // ---------- Lookups ----------
 
     public FootballTeam findTeam(String registrationNumber) throws NotFoundException {
@@ -124,7 +154,16 @@ public class FootballLeague {
         throw new NotFoundException("No fixture with ID " + trim(fixtureId) + ".");
     }
 
-    /** Teams whose name, registration number or parish contains the text (ignoring case). */
+    public Spectator findSpectator(String spectatorId) throws NotFoundException {
+        for (Spectator spectator : spectators) {
+            if (spectator.getId().equalsIgnoreCase(trim(spectatorId))) {
+                return spectator;
+            }
+        }
+        throw new NotFoundException("No spectator with ID " + trim(spectatorId) + ".");
+    }
+
+    //Teams whose name, registration number or parish contains the text (ignoring case).
     public List<FootballTeam> searchTeams(String text) {
         String wanted = trim(text).toLowerCase();
         List<FootballTeam> found = new ArrayList<>();
@@ -140,10 +179,9 @@ public class FootballLeague {
 
     // ---------- Scheduling (BR1, BR2) ----------
 
-    /**
-     * Creates a fixture after checking every rule. If any check fails nothing is added.
-    
-     */
+    /*
+      Creates a fixture after checking every rule. If any check fails nothing is added.
+    */
     public Fixture scheduleFixture(String fixtureId, String homeRegNo, String awayRegNo, String stadiumId,
                                    LocalDate date, LocalTime time)
             throws InvalidDataException, NotFoundException, DuplicateEntryException,
@@ -188,7 +226,7 @@ public class FootballLeague {
         return fixture;
     }
 
-    /** Assigns an official to a fixture. BR3 is checked against every fixture in the league. */
+    // Assigns an official to a fixture. BR3 is checked against every fixture in the league.
     public void assignOfficial(String fixtureId, String officialId)
             throws InvalidDataException, NotFoundException, DuplicateEntryException,
                    FixtureStateException, SchedulingConflictException {
@@ -197,11 +235,24 @@ public class FootballLeague {
         fixture.assignOfficial(official, fixtures);
     }
 
+    // ---------- Ticket sales (BR4, BR5) ----------
+
+    /*
+      Sells tickets for a fixture to a registered spectator. The fixture checks the quantity (BR5),
+      that it has not been played, and the stadium's capacity (BR4); a refused sale issues nothing.
+     */
+    public List<Ticket> sellTickets(String fixtureId, String spectatorId, TicketCategory category, int quantity)
+            throws InvalidDataException, NotFoundException, FixtureStateException, StadiumCapacityExceededException {
+        Fixture fixture = findFixture(fixtureId);
+        Spectator spectator = findSpectator(spectatorId);
+        return fixture.sellTickets(spectator, category, quantity);
+    }
+
     // ---------- Results and standings (BR5, BR8) ----------
 
-    /**
-     * Records the final score, completes the fixture, and updates every team's points.
-     * A negative score (BR5) or a second result for the same fixture (BR8) is refused.
+    /*
+      Records the final score, completes the fixture, and updates every team's points.
+      A negative score (BR5) or a second result for the same fixture (BR8) is refused.
      */
     public void recordResult(String fixtureId, int homeGoals, int awayGoals)
             throws InvalidDataException, NotFoundException, FixtureStateException {
@@ -253,6 +304,15 @@ public class FootballLeague {
 
     public List<Fixture> getFixtures() {
         return Collections.unmodifiableList(fixtures);
+    }
+
+    public List<Spectator> getSpectators() {
+        return Collections.unmodifiableList(spectators);
+    }
+
+    // The league's stadium shop (its products and completed sales).
+    public StadiumShop getShop() {
+        return shop;
     }
 
     private static String trim(String text) {
