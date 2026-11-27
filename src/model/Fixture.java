@@ -5,7 +5,9 @@ import exception.FixtureStateException;
 import exception.InvalidDataException;
 import exception.NotFoundException;
 import exception.SchedulingConflictException;
+import exception.StadiumCapacityExceededException;
 import exception.TeamNotEligibleException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -26,9 +28,9 @@ public class Fixture {
     private LocalDate date;
     private LocalTime time;
     private FixtureStatus status;
-    private int ticketsSold;
     private MatchResult result; // null until the fixture is completed 
     private final List<MatchOfficial> officials = new ArrayList<>();
+    private final List<Ticket> tickets = new ArrayList<>(); // composition: the fixture owns its tickets
 
     
      /* Creates a SCHEDULED fixture.
@@ -63,7 +65,6 @@ public class Fixture {
         setDate(date);
         setTime(time);
         this.status = FixtureStatus.SCHEDULED;
-        this.ticketsSold = 0;
     }
 
     /*
@@ -78,9 +79,17 @@ public class Fixture {
         this.date = other.date;
         this.time = other.time;
         this.status = other.status;
-        this.ticketsSold = other.ticketsSold;
         this.result = other.result == null ? null : new MatchResult(other.result);
         this.officials.addAll(other.officials);
+        // Tickets belong to the fixture (composition), so the copy gets its own ticket objects.
+        for (Ticket ticket : other.tickets) {
+            try {
+                this.tickets.add(new Ticket(ticket.getTicketId(), this, ticket.getSpectator(),
+                        ticket.getCategory(), ticket.getPrice()));
+            } catch (InvalidDataException e) {
+                throw new IllegalStateException("A valid ticket could not be copied.", e);
+            }
+        }
     }
 
     // True if the given team is the home or away team in this fixture. 
@@ -222,9 +231,9 @@ public class Fixture {
         if (stadium == null) {
             throw new InvalidDataException("A fixture must be assigned a stadium.");
         }
-        if (!stadium.checkCapacity(ticketsSold)) {
+        if (!stadium.checkCapacity(tickets.size())) {
             throw new InvalidDataException(stadium.getName() + " only has " + stadium.getSeatingCapacity()
-                    + " seats, but " + ticketsSold + " tickets are already sold for this fixture.");
+                    + " seats, but " + tickets.size() + " tickets are already sold for this fixture.");
         }
         this.stadium = stadium;
     }
@@ -233,12 +242,12 @@ public class Fixture {
 
     //Number of seats taken for this fixture (tickets sold so far).
     public int getOccupancy() {
-        return ticketsSold;
+        return tickets.size();
     }
 
     //Seats still free for this fixture: the stadium's capacity minus the tickets sold
     public int getSeatsRemaining() {
-        return stadium.getSeatingCapacity() - ticketsSold;
+        return stadium.getSeatingCapacity() - getOccupancy();
     }
 
     /*
@@ -246,7 +255,95 @@ public class Fixture {
       The ticketing code (Week 4) calls this before it sells any tickets.
      */
     public boolean hasSeatsFor(int quantity) {
-        return quantity > 0 && stadium.checkCapacity(ticketsSold + quantity);
+        return quantity > 0 && stadium.checkCapacity(getOccupancy() + quantity);
+    }
+
+    // ---------- Ticket sales (BR4, BR5) ----------
+
+    /**
+     * Sells tickets for this fixture to one spectator and returns the new tickets.
+     * Every check runs first, so a refused sale issues no tickets at all.
+     *
+     * @throws InvalidDataException             no spectator or category, or a quantity of 0 or less (BR5)
+     * @throws FixtureStateException            the fixture has already been played
+     * @throws StadiumCapacityExceededException the sale would go over the stadium's capacity (BR4)
+     */
+    public List<Ticket> sellTickets(Spectator spectator, TicketCategory category, int quantity)
+            throws InvalidDataException, FixtureStateException, StadiumCapacityExceededException {
+        if (spectator == null) {
+            throw new InvalidDataException("Tickets must be sold to a spectator.");
+        }
+        if (category == null) {
+            throw new InvalidDataException("Ticket category cannot be empty.");
+        }
+        if (quantity <= 0) {
+            throw new InvalidDataException("Ticket quantity must be at least 1 (value given: " + quantity + ").");
+        }
+        if (status != FixtureStatus.SCHEDULED) {
+            throw new FixtureStateException("Tickets cannot be sold for " + fixtureId + " because it is " + status + ".");
+        }
+        if (!hasSeatsFor(quantity)) {
+            throw new StadiumCapacityExceededException("Cannot sell " + quantity + " tickets for " + fixtureId
+                    + ": only " + getSeatsRemaining() + " of " + stadium.getSeatingCapacity() + " seats are left.");
+        }
+        BigDecimal price = category.priceFor(stadium.getTicketPrice());
+        List<Ticket> sold = new ArrayList<>();
+        for (int i = 1; i <= quantity; i++) {
+            sold.add(new Ticket(nextTicketId(tickets.size() + i), this, spectator, category, price));
+        }
+        tickets.addAll(sold);
+        return Collections.unmodifiableList(sold);
+    }
+
+    /**
+     * Puts back a ticket that was sold earlier, when saved data is loaded. Unlike sellTickets,
+     * it also works for a fixture that has since been played, but the ticket is still checked:
+     * no duplicate ticket ID, and never more tickets than the stadium's capacity (BR4).
+     */
+    public Ticket restoreTicket(String ticketId, Spectator spectator, TicketCategory category, BigDecimal price)
+            throws InvalidDataException, DuplicateEntryException, StadiumCapacityExceededException {
+        for (Ticket existing : tickets) {
+            if (existing.getTicketId().equalsIgnoreCase(ticketId == null ? "" : ticketId.trim())) {
+                throw new DuplicateEntryException("Ticket " + ticketId + " already exists for " + fixtureId + ".");
+            }
+        }
+        if (!stadium.checkCapacity(getOccupancy() + 1)) {
+            throw new StadiumCapacityExceededException("Ticket " + ticketId + " would put " + fixtureId
+                    + " over the capacity of " + stadium.getSeatingCapacity() + ".");
+        }
+        Ticket ticket = new Ticket(ticketId, this, spectator, category, price);
+        tickets.add(ticket);
+        return ticket;
+    }
+
+    /** Ticket IDs are the fixture ID plus a running number, e.g. FX01-T0001. */
+    private String nextTicketId(int number) {
+        return String.format("%s-T%04d", fixtureId, number);
+    }
+
+    /** Every ticket sold for this fixture. The list cannot be changed from outside. */
+    public List<Ticket> getTickets() {
+        return Collections.unmodifiableList(tickets);
+    }
+
+    /** How many tickets of one category have been sold. */
+    public int countTickets(TicketCategory category) {
+        int count = 0;
+        for (Ticket ticket : tickets) {
+            if (ticket.getCategory() == category) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /** Total money taken from ticket sales for this fixture. */
+    public BigDecimal getTicketRevenue() {
+        BigDecimal total = BigDecimal.ZERO.setScale(2);
+        for (Ticket ticket : tickets) {
+            total = total.add(ticket.getPrice());
+        }
+        return total;
     }
 
     public LocalDate getDate() {
@@ -280,6 +377,6 @@ public class Fixture {
         return fixtureId + ": " + homeTeam.getName() + " vs " + awayTeam.getName()
                 + " at " + stadium.getName() + " on " + date + " at " + time + " (" + status
                 + (result == null ? "" : " " + result) + ", "
-                + ticketsSold + "/" + stadium.getSeatingCapacity() + " seats taken)";
+                + getOccupancy() + "/" + stadium.getSeatingCapacity() + " seats taken)";
     }
 }

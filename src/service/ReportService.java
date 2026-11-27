@@ -8,9 +8,14 @@ import model.FootballLeague;
 import model.FootballTeam;
 import model.MatchOfficial;
 import model.Player;
+import model.Product;
 import model.Stadium;
+import model.StadiumShop;
 import model.StandingsEntry;
+import model.TicketCategory;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -174,5 +179,78 @@ public class ReportService {
                 + " of " + league.getOfficials().size() + "\n";
 
         return report;
+    }
+
+    // Report 4: Fixtures, Attendance & Ticket Revenue (Week 1 menu design, option 4.2)
+    public String generateFixtureAttendanceReport() {
+        StringBuilder report = new StringBuilder("=== KPFL FIXTURES, ATTENDANCE & TICKET REVENUE ===\n");
+        if (league.getFixtures().isEmpty()) {
+            return report.append("No fixtures scheduled yet.\n").toString();
+        }
+        int totalTickets = 0;
+        BigDecimal totalRevenue = BigDecimal.ZERO.setScale(2);
+        for (Fixture fixture : league.getFixtures()) {
+            int capacity = fixture.getStadium().getSeatingCapacity();
+            int sold = fixture.getOccupancy();
+            report.append(fixture.getFixtureId()).append(": ")
+                    .append(fixture.getHomeTeam().getName()).append(" vs ").append(fixture.getAwayTeam().getName())
+                    .append(" | ").append(fixture.getDate()).append(' ').append(fixture.getTime())
+                    .append(" | ").append(fixture.getStadium().getName())
+                    .append(" | ").append(fixture.getStatus())
+                    .append(fixture.getResult() == null ? "" : " " + fixture.getResult()).append('\n');
+            report.append("  Attendance: ").append(sold).append(" / ").append(capacity)
+                    .append(" seats (").append(percent(sold, capacity)).append(")")
+                    .append(" | Revenue: $").append(fixture.getTicketRevenue()).append('\n');
+            report.append("  By category:");
+            for (TicketCategory category : TicketCategory.values()) {
+                report.append(' ').append(category).append(' ').append(fixture.countTickets(category));
+            }
+            report.append("\n\n");
+            totalTickets += sold;
+            totalRevenue = totalRevenue.add(fixture.getTicketRevenue());
+        }
+        report.append("Total tickets sold: ").append(totalTickets)
+                .append(" | Total ticket revenue: $").append(totalRevenue).append('\n');
+        return report.toString();
+    }
+
+    // Report 5: Shop Sales & Low Stock (Week 1 menu design, option 4.3)
+    public String generateShopReport() {
+        StadiumShop shop = league.getShop();
+        StringBuilder report = new StringBuilder("=== KPFL SHOP SALES & LOW STOCK ===\n");
+        report.append("Completed sales: ").append(shop.getSales().size())
+                .append(" | Total sales: $").append(shop.getTotalSales())
+                .append(" | GCT collected: $").append(shop.getTotalTaxCollected())
+                .append(" | Sales before GCT: $").append(shop.getTotalSales().subtract(shop.getTotalTaxCollected()))
+                .append('\n');
+        if (shop.getProducts().isEmpty()) {
+            return report.append("No products in the shop yet.\n").toString();
+        }
+        report.append("\nProducts (units sold, stock left):\n");
+        for (Product product : shop.getProducts()) {
+            report.append(String.format("  %-6s %-26s %-11s sold %4d | stock %4d%s%n", product.getProductId(),
+                    product.getName(), product.getProductType(), shop.unitsSold(product),
+                    product.getStockQuantity(), product.isLowStock() ? "  LOW" : ""));
+        }
+        List<Product> low = shop.getLowStockProducts();
+        report.append("\nLow stock (reorder): ");
+        if (low.isEmpty()) {
+            report.append("none\n");
+        } else {
+            report.append('\n');
+            for (Product product : low) {
+                report.append("  ").append(product.getProductId()).append(' ').append(product.getName())
+                        .append(": ").append(product.getStockQuantity()).append(" left (reorder level ")
+                        .append(product.getLowStockThreshold()).append(")\n");
+            }
+        }
+        return report.toString();
+    }
+
+    private static String percent(int part, int whole) {
+        if (whole <= 0) {
+            return "0.0%";
+        }
+        return BigDecimal.valueOf(part * 100L).divide(BigDecimal.valueOf(whole), 1, RoundingMode.HALF_UP) + "%";
     }
 }

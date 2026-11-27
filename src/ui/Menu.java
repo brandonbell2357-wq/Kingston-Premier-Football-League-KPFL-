@@ -1,17 +1,26 @@
 package ui;
 
 import exception.DataFileException;
+import exception.InvalidDataException;
 import exception.KPFLException;
 import model.Coach;
 import model.FootballLeague;
 import model.FootballTeam;
 import model.Fixture;
+import model.FoodItem;
 import model.LeagueCommissioner;
 import model.MatchOfficial;
+import model.Merchandise;
 import model.Player;
+import model.Product;
+import model.Sale;
+import model.Spectator;
 import model.Stadium;
+import model.StadiumShop;
 import model.StandingsEntry;
 import model.TeamStatus;
+import model.Ticket;
+import model.TicketCategory;
 import service.ReportService;
 import service.StandingsService;
 import storage.LeagueFileStorage;
@@ -28,8 +37,9 @@ import java.util.Scanner;
   in the Week 1 requirements document (section 8).
   Week 3 options (teams, squads, stadiums, officials, fixtures, results, standings) call
   the FootballLeague. Every action is wrapped in try/catch so a broken business rule
-  shows the exception's message instead of crashing. Ticketing, shop and the shop
-  report are still placeholders (Week 4).
+  shows the exception's message instead of crashing.
+  Week 4 options: ticket sales (3.1), shop products and stock (3.2), shop transactions with
+  GCT, payment, change and receipt (3.3), and the attendance and shop reports.
   In every menu the last option goes back (or saves and exits on the main menu).
  */
 public class Menu {
@@ -151,9 +161,9 @@ public class Menu {
             System.out.println("4. Return to Main Menu");
             int choice = readInt("Enter option (1-4): ", 1, 4);
             switch (choice) {
-                case 1 -> notImplemented("3.1 Purchase Match Tickets");
-                case 2 -> notImplemented("3.2 Add / Update Shop Products & Stock");
-                case 3 -> notImplemented("3.3 Process Shop Transaction");
+                case 1 -> purchaseTickets();
+                case 2 -> shopProductsMenu();
+                case 3 -> processShopTransaction();
                 case 4 -> back = true;
             }
         }
@@ -167,15 +177,17 @@ public class Menu {
             System.out.println("1. View League Standings Report");
             System.out.println("2. View Team & Roster Directory Report");
             System.out.println("3. View Stadiums, Occupancy & Schedule Report");
-            System.out.println("4. View Shop Sales & Low Stock Report");
-            System.out.println("5. Return to Main Menu");
-            int choice = readInt("Enter option (1-5): ", 1, 5);
+            System.out.println("4. View Fixtures, Attendance & Ticket Revenue Report");
+            System.out.println("5. View Shop Sales & Low Stock Report");
+            System.out.println("6. Return to Main Menu");
+            int choice = readInt("Enter option (1-6): ", 1, 6);
             switch (choice) {
                 case 1 -> showStandings();
                 case 2 -> showTeamDirectoryReport();
                 case 3 -> showStadiumReport();
-                case 4 -> notImplemented("4.4 Shop Sales & Low Stock Report");
-                case 5 -> back = true;
+                case 4 -> showReport(reportService.generateFixtureAttendanceReport());
+                case 5 -> showReport(reportService.generateShopReport());
+                case 6 -> back = true;
             }
         }
     }
@@ -420,7 +432,220 @@ public class Menu {
         }
     }
 
+    // ---------- 3. Ticketing & Stadium Shop ----------
+
+    // 3.1 Sells tickets for a fixture to a spectator (BR4 capacity and BR5 quantity are checked by Fixture).
+    private void purchaseTickets() {
+        try {
+            listFixtures();
+            Fixture fixture = league.findFixture(ask("Fixture ID: "));
+            System.out.println("Seats left: " + fixture.getSeatsRemaining() + " of "
+                    + fixture.getStadium().getSeatingCapacity());
+            Spectator spectator = askSpectator(false);
+            System.out.println("Categories (price for this stadium):");
+            TicketCategory[] categories = TicketCategory.values();
+            for (int i = 0; i < categories.length; i++) {
+                System.out.println("  " + (i + 1) + ". " + categories[i] + "  $"
+                        + categories[i].priceFor(fixture.getStadium().getTicketPrice()));
+            }
+            TicketCategory category = categories[readInt("Category (1-" + categories.length + "): ", 1, categories.length) - 1];
+            int quantity = askInt("Quantity: ");
+            List<Ticket> tickets = league.sellTickets(fixture.getFixtureId(), spectator.getId(), category, quantity);
+            BigDecimal total = BigDecimal.ZERO;
+            for (Ticket ticket : tickets) {
+                System.out.println("  Issued " + ticket);
+                total = total.add(ticket.getPrice());
+            }
+            System.out.println(tickets.size() + " ticket(s) sold. Total: $" + total
+                    + ". Seats left: " + fixture.getSeatsRemaining() + ".");
+        } catch (KPFLException e) {
+            System.out.println("Cannot sell tickets: " + e.getMessage());
+        } catch (NumberFormatException e) {
+            System.out.println("Cannot sell tickets: the quantity must be a whole number.");
+        }
+    }
+
+    /*
+      Asks for a spectator ID. An existing spectator is used; an unknown ID registers a new
+      spectator on the spot. When blankMeansWalkIn is true, an empty ID means a walk-in customer (null).
+     */
+    private Spectator askSpectator(boolean blankMeansWalkIn) throws KPFLException {
+        listSpectators();
+        String id = ask(blankMeansWalkIn ? "Spectator ID (new or existing, blank for walk-in): "
+                : "Spectator ID (new or existing): ");
+        if (id.isEmpty()) {
+            if (blankMeansWalkIn) {
+                return null;
+            }
+            throw new InvalidDataException("A spectator ID is needed to buy tickets.");
+        }
+        for (Spectator spectator : league.getSpectators()) {
+            if (spectator.getId().equalsIgnoreCase(id)) {
+                return spectator;
+            }
+        }
+        System.out.println("New spectator " + id + ". Please register them.");
+        String name = ask("Name: ");
+        int age;
+        try {
+            age = askInt("Age: ");
+        } catch (NumberFormatException e) {
+            throw new InvalidDataException("Age must be a whole number.");
+        }
+        String gender = ask("Gender: ");
+        Spectator spectator = new Spectator(id, name, age, gender);
+        league.addSpectator(spectator);
+        System.out.println("Spectator registered.");
+        return spectator;
+    }
+
+    // 3.2 Adds products, restocks them and changes prices.
+    private void shopProductsMenu() {
+        boolean back = false;
+        while (!back) {
+            System.out.println();
+            System.out.println("--- 3.2 Shop Products & Stock ---");
+            System.out.println("1. View Products");
+            System.out.println("2. Add Merchandise");
+            System.out.println("3. Add Food or Beverage");
+            System.out.println("4. Restock a Product");
+            System.out.println("5. Change a Product's Price");
+            System.out.println("6. Return");
+            int choice = readInt("Enter option (1-6): ", 1, 6);
+            switch (choice) {
+                case 1 -> listProducts();
+                case 2 -> addMerchandise();
+                case 3 -> addFoodItem();
+                case 4 -> restockProduct();
+                case 5 -> changeProductPrice();
+                case 6 -> back = true;
+            }
+        }
+    }
+
+    private void addMerchandise() {
+        try {
+            String id = ask("Product ID: ");
+            String name = ask("Name: ");
+            BigDecimal price = askMoney("Price including GCT (e.g. 4500.00): ");
+            int stock = askInt("Stock: ");
+            String size = ask("Size (e.g. M, L, One size): ");
+            String team = ask("Team (or KPFL): ");
+            league.getShop().addProduct(new Merchandise(id, name, price, stock, size, team));
+            System.out.println("Merchandise added.");
+        } catch (KPFLException e) {
+            System.out.println("Cannot add product: " + e.getMessage());
+        } catch (NumberFormatException e) {
+            System.out.println("Cannot add product: price must be a number and stock a whole number.");
+        }
+    }
+
+    private void addFoodItem() {
+        try {
+            String id = ask("Product ID: ");
+            String name = ask("Name: ");
+            BigDecimal price = askMoney("Price including GCT (e.g. 350.00): ");
+            int stock = askInt("Stock: ");
+            boolean beverage = ask("Is it a beverage? (y/n): ").equalsIgnoreCase("y");
+            league.getShop().addProduct(new FoodItem(id, name, price, stock, beverage));
+            System.out.println((beverage ? "Beverage" : "Food item") + " added.");
+        } catch (KPFLException e) {
+            System.out.println("Cannot add product: " + e.getMessage());
+        } catch (NumberFormatException e) {
+            System.out.println("Cannot add product: price must be a number and stock a whole number.");
+        }
+    }
+
+    private void restockProduct() {
+        try {
+            listProducts();
+            String id = ask("Product ID: ");
+            int quantity = askInt("Quantity to add: ");
+            league.getShop().restock(id, quantity);
+            System.out.println("Restocked: " + league.getShop().findProduct(id));
+        } catch (KPFLException e) {
+            System.out.println("Cannot restock: " + e.getMessage());
+        } catch (NumberFormatException e) {
+            System.out.println("Cannot restock: the quantity must be a whole number.");
+        }
+    }
+
+    private void changeProductPrice() {
+        try {
+            listProducts();
+            String id = ask("Product ID: ");
+            BigDecimal price = askMoney("New price including GCT: ");
+            league.getShop().updatePrice(id, price);
+            System.out.println("Price changed: " + league.getShop().findProduct(id));
+        } catch (KPFLException e) {
+            System.out.println("Cannot change price: " + e.getMessage());
+        } catch (NumberFormatException e) {
+            System.out.println("Cannot change price: enter a number such as 450.00.");
+        }
+    }
+
+    // 3.3 One shop transaction: items, subtotal, GCT, total, payment (BR7), change and receipt.
+    private void processShopTransaction() {
+        StadiumShop shop = league.getShop();
+        Sale sale;
+        try {
+            sale = shop.startSale(askSpectator(true));
+        } catch (KPFLException e) {
+            System.out.println("Cannot start the sale: " + e.getMessage());
+            return;
+        }
+        listProducts();
+        while (true) {
+            String id = ask("Product ID to add (blank when done): ");
+            if (id.isEmpty()) {
+                break;
+            }
+            try {
+                Product product = shop.findProduct(id);
+                int quantity = askInt("Quantity: ");
+                sale.addItem(product, quantity);
+                System.out.println("  Added " + quantity + " x " + product.getName() + ". Total so far: $" + sale.getTotal());
+            } catch (KPFLException e) {
+                System.out.println("  Not added: " + e.getMessage());
+            } catch (NumberFormatException e) {
+                System.out.println("  Not added: the quantity must be a whole number.");
+            }
+        }
+        if (sale.getItems().isEmpty()) {
+            System.out.println("No items, so the sale was cancelled.");
+            return;
+        }
+        System.out.println("Subtotal (before GCT): $" + sale.getSubtotal());
+        System.out.println("GCT (15%):             $" + sale.getTax());
+        System.out.println("TOTAL:                 $" + sale.getTotal());
+        while (true) {
+            String paidText = ask("Amount paid (blank to cancel the sale): ");
+            if (paidText.isEmpty()) {
+                System.out.println("Sale cancelled. No stock was removed.");
+                return;
+            }
+            try {
+                shop.completeSale(sale, parseMoney(paidText));
+                System.out.println();
+                System.out.print(sale.toReceipt());
+                return;
+            } catch (KPFLException e) {
+                System.out.println("Payment refused: " + e.getMessage());
+                if (sale.isCompleted()) {
+                    return;
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Enter an amount such as 3000.00.");
+            }
+        }
+    }
+
     // ---------- 4. Reports ----------
+
+    private void showReport(String report) {
+        System.out.println();
+        System.out.print(report);
+    }
 
     private void showStandings() {
         try {
@@ -467,6 +692,26 @@ public class Menu {
         }
     }
 
+    private void listSpectators() {
+        System.out.println("Spectators:");
+        if (league.getSpectators().isEmpty()) {
+            System.out.println("  (none yet)");
+        }
+        for (Spectator spectator : league.getSpectators()) {
+            System.out.println("  " + spectator.getId() + "  " + spectator.getName());
+        }
+    }
+
+    private void listProducts() {
+        System.out.println("Products (prices include 15% GCT):");
+        if (league.getShop().getProducts().isEmpty()) {
+            System.out.println("  (none yet)");
+        }
+        for (Product product : league.getShop().getProducts()) {
+            System.out.println("  " + product.describe());
+        }
+    }
+
     private void listFixtures() {
         System.out.println("Fixtures:");
         if (league.getFixtures().isEmpty()) {
@@ -493,12 +738,21 @@ public class Menu {
         return Integer.parseInt(ask(prompt));
     }
 
-    // ---------- Helpers ----------
-
-    // Placeholder for features not built yet.
-    private void notImplemented(String feature) {
-        System.out.println("[" + feature + "] is not implemented yet.");
+    // Asks for an amount of money such as 1500.00. Throws NumberFormatException if it is not one.
+    private BigDecimal askMoney(String prompt) {
+        return parseMoney(ask(prompt));
     }
+
+    // Money has at most 2 decimal places (cents); anything else is not a valid amount.
+    private static BigDecimal parseMoney(String text) {
+        BigDecimal amount = new BigDecimal(text.trim());
+        if (amount.scale() > 2) {
+            throw new NumberFormatException("too many decimal places");
+        }
+        return amount;
+    }
+
+    // ---------- Helpers ----------
 
     // Saves the league to the data folder. Returns true if the data was saved.
     private boolean saveData() {

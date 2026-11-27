@@ -10,8 +10,12 @@ import model.FootballTeam;
 import model.LeagueCommissioner;
 import model.MatchOfficial;
 import model.Player;
+import model.Product;
+import model.Spectator;
 import model.Stadium;
 import model.TeamStatus;
+import model.Ticket;
+import model.TicketCategory;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -37,6 +41,12 @@ import java.util.List;
     players.txt    one player per line, with the registration number of their team
     coaches.txt    one coach per line, with the registration number of their team
     fixtures.txt   one fixture per line, with its result and assigned officials
+    spectators.txt one spectator per line
+    products.dat   the shop's products  (RANDOM ACCESS, fixed-length records: see RandomAccessRecords)
+    tickets.dat    every ticket sold    (RANDOM ACCESS, fixed-length records: see RandomAccessRecords)
+
+  spectators.txt, products.dat and tickets.dat were added in Week 4. A folder saved before then
+  does not have them, so a missing one simply means "none yet".
 
   Standings are not stored: they are rebuilt from the completed fixtures.
   Text containing "|", a backslash or a line break is escaped so it cannot break a record.
@@ -55,9 +65,13 @@ public class LeagueFileStorage {
     public static final String PLAYERS_FILE = "players.txt";
     public static final String COACHES_FILE = "coaches.txt";
     public static final String FIXTURES_FILE = "fixtures.txt";
+    public static final String SPECTATORS_FILE = "spectators.txt";
+    public static final String PRODUCTS_FILE = "products.dat";
+    public static final String TICKETS_FILE = "tickets.dat";
 
     private static final String[] ALL_FILES = {
-            LEAGUE_FILE, STADIUMS_FILE, OFFICIALS_FILE, TEAMS_FILE, PLAYERS_FILE, COACHES_FILE, FIXTURES_FILE
+            LEAGUE_FILE, STADIUMS_FILE, OFFICIALS_FILE, TEAMS_FILE, PLAYERS_FILE, COACHES_FILE, FIXTURES_FILE,
+            SPECTATORS_FILE, PRODUCTS_FILE, TICKETS_FILE
     };
 
     private static final String SEPARATOR = "|";
@@ -138,6 +152,15 @@ public class LeagueFileStorage {
                     f.getTime(), f.getStatus(), homeGoals, awayGoals, officialIds.toString()));
         }
 
+        List<String> spectatorLines = new ArrayList<>();
+        for (Spectator sp : league.getSpectators()) {
+            spectatorLines.add(line(sp.getId(), sp.getName(), sp.getAge(), sp.getGender()));
+        }
+        List<Ticket> allTickets = new ArrayList<>();
+        for (Fixture f : league.getFixtures()) {
+            allTickets.addAll(f.getTickets());
+        }
+
         try {
             Files.createDirectories(directory);
             // Write everything to temporary files first...
@@ -148,6 +171,9 @@ public class LeagueFileStorage {
             write(PLAYERS_FILE, playerLines);
             write(COACHES_FILE, coachLines);
             write(FIXTURES_FILE, fixtureLines);
+            write(SPECTATORS_FILE, spectatorLines);
+            RandomAccessRecords.writeProducts(directory.resolve(PRODUCTS_FILE + ".tmp"), league.getShop().getProducts());
+            RandomAccessRecords.writeTickets(directory.resolve(TICKETS_FILE + ".tmp"), allTickets);
             // ...then replace the real files.
             for (String name : ALL_FILES) {
                 Files.move(directory.resolve(name + ".tmp"), directory.resolve(name),
@@ -155,6 +181,19 @@ public class LeagueFileStorage {
             }
         } catch (IOException e) {
             throw new DataFileException("Could not save the data to " + directory + ": " + e.getMessage(), e);
+        } catch (DataFileException e) {
+            deleteTemporaryFiles();   // a refused save leaves the previous data untouched
+            throw e;
+        }
+    }
+
+    private void deleteTemporaryFiles() {
+        for (String name : ALL_FILES) {
+            try {
+                Files.deleteIfExists(directory.resolve(name + ".tmp"));
+            } catch (IOException ignored) {
+                // nothing more can be done; the real files were not touched
+            }
         }
     }
 
@@ -263,7 +302,30 @@ public class LeagueFileStorage {
         for (int i = 0; i < officials.size(); i++) {
             officials.get(i).setAvailable(availability.get(i));
         }
+
+        // ---- Week 4: spectators (sequential), products and tickets (random access) ----
+        if (Files.exists(directory.resolve(SPECTATORS_FILE))) {
+            for (String[] r : read(SPECTATORS_FILE, 4)) {
+                league.addSpectator(new Spectator(r[0], r[1], toInt(SPECTATORS_FILE, r[2]), r[3]));
+            }
+        }
+        for (Product product : RandomAccessRecords.readProducts(directory.resolve(PRODUCTS_FILE))) {
+            league.getShop().addProduct(product);
+        }
+        for (RandomAccessRecords.TicketRow row : RandomAccessRecords.readTickets(directory.resolve(TICKETS_FILE))) {
+            Fixture fixture = league.findFixture(row.fixtureId());
+            Spectator spectator = league.findSpectator(row.spectatorId());
+            fixture.restoreTicket(row.ticketId(), spectator, toCategory(row.category()), row.price());
+        }
         return league;
+    }
+
+    private static TicketCategory toCategory(String text) throws DataFileException {
+        try {
+            return TicketCategory.valueOf(text.trim());
+        } catch (IllegalArgumentException e) {
+            throw new DataFileException(TICKETS_FILE + ": \"" + text + "\" is not a ticket category.", e);
+        }
     }
 
     // Reads a file and splits every non-blank line into exactly "count" fields.
